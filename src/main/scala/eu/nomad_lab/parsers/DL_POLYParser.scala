@@ -2,10 +2,10 @@ package eu.nomad_lab.parsers
 import eu.nomad_lab.DefaultPythonInterpreter
 import org.{json4s => jn}
 
-object DLPOLYParser extends SimpleExternalParserGenerator(
-  name = "DLPOLYParser",
+object DlPolyParser extends SimpleExternalParserGenerator(
+  name = "DlPolyParser",
   parserInfo = jn.JObject(
-    ("name" -> jn.JString("DLPOLYParser")) ::
+    ("name" -> jn.JString("DlPolyParser")) ::
       ("version" -> jn.JString("1.0")) :: Nil),
   mainFileTypes = Seq("text/.*"),
   mainFileRe = """ DL_POLY """.r,
