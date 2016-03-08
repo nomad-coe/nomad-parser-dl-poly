@@ -404,7 +404,7 @@ class DlPolyControls(DlPolyParser):
         return
     def ParseControls(self, ctrl_file):
         if self.log: 
-            self.log << self.log.endl << self.log.mg << "Start controls ..." << self.log.endl        
+            self.log << self.log.mg << "Start controls ..." << self.log.endl        
         ifs = FileStream(ctrl_file)
         while not ifs.all_read():
             ln = ifs.ln()
@@ -575,6 +575,11 @@ class DlPolyMolecule(DlPolyParser):
                 break
         assert atom_count == n_atoms
         
+        atom_charges = [ atom['atom_charge'].As(float) for atom in self.atoms ]
+        atom_names = [ atom['atom_name'].As() for atom in self.atoms ]
+        self.Set('atom_in_molecule_charge', atom_charges)
+        self.Set('atom_in_molecule_name', atom_names)
+        
         # TODO Parse interactions
         return
 
@@ -582,7 +587,7 @@ class DlPolyMolecule(DlPolyParser):
 class DlPolyAtom(DlPolyParser):
     def __init__(self, atom_properties, atom_property_labels, parser):
         super(DlPolyAtom, self).__init__(parser.log)
-        if not self.log.debug: self.log = None
+        if self.log and not self.log.debug: self.log = None
         self.logtag = 'atm'
         for value, label in zip(atom_properties, atom_property_labels):
             self.Set(label, value)
