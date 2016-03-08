@@ -2,19 +2,26 @@ import os
 import sys
 import re
 
+# TODO Distinguish: number_of_steps vs number_of_steps_equilibration
+# TODO Check units and install conversions
+# TODO - Pressure
+# TODO Check sampling_method
+
+
+
 # =================
 # TRANSLATION RULES
 # =================
 
 KEY_TRANSFORM_SIM_CTRL = {
-'simulation_temperature_k' : 'thermostat_T',
-'simulation_pressure_katms' : 'barostat_P',
-'integration' : 'integrator',
-'ensemble' : None,
+'simulation_temperature_k' : 'thermostat_target_temperature',
+'simulation_pressure_katms' : 'barostat_target_pressure',
+'integration' : 'integrator_type',
+'ensemble' : 'ensemble_type',
 'thermostat_relaxation_time_ps' : 'thermostat_tau',
 'barostat_relaxation_time_ps' : 'barostat_tau',
-'selected_number_of_timesteps' : 'n_steps',
-'equilibration_period_steps' : 'n_steps_equ',
+'selected_number_of_timesteps' : 'number_of_steps_requested',
+'equilibration_period_steps' : 'number_of_steps_equil_requested',
 'temperature_scaling_on_during' : None,
 'temperature_scaling_interval' : None,
 'equilibration_included_in_overall' : None,
@@ -29,7 +36,7 @@ KEY_TRANSFORM_SIM_CTRL = {
 'extended_coulombic_exclusion' : None,
 'cutoff_padding_reset_to_angs' : None,
 'vdw_cutoff_reset_to_angs' : None,
-'fixed_simulation_timestep_ps' : None,
+'fixed_simulation_timestep_ps' : 'integrator_dt',
 'data_dumping_interval_steps' : None,
 'allocated_job_run_time_s' : None,
 'allocated_job_close_time_s' : None
@@ -43,7 +50,7 @@ KEY_TRANSFORM_SYS_SPEC = {
 KEY_TRANSFORM_MOL_GLOBAL = {
 'molecular_species_type' : 'molecule_type_id',
 'name_of_species' : 'molecule_type_name',
-'number_of_molecules' : 'n_instances_molecule_type'
+'number_of_molecules' : 'number_of_molecules'
 }
 
 KEY_RULES_CONTROLS = {
@@ -347,10 +354,12 @@ class DlPolyParser(object):
             self.log << self.log.mg << "Start simulation method ..." << self.log.endl
         
         ifs = FileStream(output_file)
+        self.Set('program_name', 'DL_POLY')
+        self.Set('sampling_method', 'molecular_dynamics')
         
         # HEADER & NODE STRUCTURE
         ln = ifs.SkipTo('** DL_POLY **')
-        self.SearchMapKeys('version:\s*(\d+.\d+)\s*/\s*(\w+\s*\d+)', ifs.ln(), ['version', 'version_date'])
+        self.SearchMapKeys('version:\s*(\d+.\d+)\s*/\s*(\w+\s*\d+)', ifs.ln(), ['program_version', 'program_version_date'])
         self.SearchMapKeys('execution on\s*(\d+)\s*node', ifs.ln(), ['n_nodes'])
         ln = ifs.SkipTo('node/domain decomposition')
         self.Set('domain_decomposition', map(int, ln.split()[-3:]))
@@ -487,7 +496,18 @@ class DlPolyTopology(DlPolyParser):
         self.molecules = []
         for block_mol in block_mols:
             if self.log: self.log << self.log.mg << "Start molecule ..." << self.log.endl
-            new_mol = DlPolyMolecule(block_mol, self)            
+            new_mol = DlPolyMolecule(block_mol, self)
+            self.molecules.append(new_mol)
+        
+        n_atoms_total = 0
+        n_molecules_total = 0
+        for mol in self.molecules:
+            n_mol = mol['number_of_molecules'].As(int)
+            n_atoms = mol['number_of_atoms_in_molecule'].As(int)
+            n_atoms_total += n_mol*n_atoms
+            n_molecules_total += n_mol
+        self.Set('number_of_topology_atoms', n_atoms_total)
+        self.Set('number_of_topology_molecules', n_molecules_total)
         return
 
 
@@ -526,7 +546,7 @@ class DlPolyMolecule(DlPolyParser):
         if self.log: self.log << self.log.mg << "Start atoms ..." << self.log.endl
         block = blocks[expr_atoms][0]
         n_atoms = int(block.ln().split()[-1])
-        self.Set('n_atoms_in_molecule', n_atoms)
+        self.Set('number_of_atoms_in_molecule', n_atoms)
         assert 'atomic characteristics' in block.ln()
         # Determine atom properties        
         atom_property_labels = block.ln().split()
