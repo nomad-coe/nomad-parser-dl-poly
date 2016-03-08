@@ -2,7 +2,9 @@ import os
 import sys
 import re
 
-
+# =================
+# TRANSLATION RULES
+# =================
 
 KEY_TRANSFORM_SIM_CTRL = {
 'simulation_temperature_k' : 'thermostat_T',
@@ -36,8 +38,43 @@ KEY_TRANSFORM_SIM_CTRL = {
 KEY_TRANSFORM_SYS_SPEC = {
 'energy_units' : 'energy_units',
 'number_of_molecular_types' : 'n_molecular_types'
-}       
+}
 
+KEY_TRANSFORM_MOL_GLOBAL = {
+'molecular_species_type' : 'molecule_type_id',
+'name_of_species' : 'molecule_type_name',
+'number_of_molecules' : 'n_instances_molecule_type'
+}
+
+KEY_RULES_CONTROLS = {
+'ensemble' :    lambda l: [ s.lower() for s in l[1:] ],
+'temperature' : lambda l: l[-1],
+'pressure' :    lambda l: l[-1],
+'timestep' :    lambda l: l[-1],
+'steps':        lambda l: l[-1],
+'equilibration':lambda l: l[-1],
+'cutoff':       lambda l: l[-1]
+}
+
+KEY_RULES_CONTROLS_EXPAND_KEY = {
+'ensemble':'ensemble',
+'temp':'temperature',
+'temperature':'temperature',
+'pres':'pressure',
+'pressure':'pressure',
+'timestep':'timestep',
+'steps':'steps',
+'equilibration':'equilibration',
+'equil':'equilibration',
+'cut':'cutoff',
+'rcut':'cutoff',
+'cutoff':'cutoff'
+}
+
+
+# ===================
+# FILE & BLOCK STREAM
+# ===================
 
 class FileStream(object):
     def __init__(self, filename=None):
@@ -45,10 +82,13 @@ class FileStream(object):
             self.ifs = open(filename, 'r')
         else:
             self.ifs = None
+        return
     def SkipTo(self, expr):
         while True:
             ln = self.ifs.readline()
             if expr in ln:
+                break
+            if self.all_read():
                 break
         return ln
     def SkipToMatch(self, expr):
@@ -145,6 +185,8 @@ class FileStream(object):
         return self.ifs.tell() == os.fstat(self.ifs.fileno()).st_size
     def readline(self):
         return ifs.readline()
+    def close(self):
+        self.ifs.close()
     def nextline(self):
         while True:
             ln = self.ifs.readline()
@@ -192,6 +234,9 @@ class BlockStream(FileStream):
                 cat += ln
         return cat
 
+# ================
+# DLPOLY TERMINALS
+# ================
 
 class DlPolyParser(object):
     def __init__(self, log=None):
@@ -200,12 +245,19 @@ class DlPolyParser(object):
         self.data = {}
         self.topology = None
         self.logtag = 'sim'
-        
+        # KEY DEFAULT DICTIONARIES
         self.missing_keys_lh = [] # Transform keys that were not found in output
         self.missing_keys_rh = []
         self.ignored_keys = [] # Raw keys that did not have a transform
         self.keys_not_found = [] # Searches that failed
         return
+    def __getitem__(self, key):
+        self.selected_data_item = self.data[key]
+        return self
+    def As(self, typ=None):
+        if typ == None:
+            typ = type(self.selected_data_item)
+        return typ(self.selected_data_item)
     def SummarizeKeyDefaults(self):
         if not self.log: return
         if len(self.missing_keys_lh):
@@ -292,8 +344,6 @@ class DlPolyParser(object):
         return
     def ParseOutput(self, output_file):        
         if self.log: 
-            self.log << self.log.endl << self.log.endl
-            self.log << "DlPolyParser::ParseOutput" << self.log.endl
             self.log << self.log.mg << "Start simulation method ..." << self.log.endl
         
         ifs = FileStream(output_file)
@@ -320,27 +370,99 @@ class DlPolyParser(object):
         expr_molecule = 'molecular species type'
         expr_config = 'configuration file name'
         expr_vdw = 'number of specified vdw potentials'
-        expr_new = [ expr_molecule, expr_vdw, expr_config ]
+        expr_total = 'total number of molecules'
+        expr_new = [ expr_molecule, expr_vdw, expr_config, expr_total ]
         expr_end = 'all reading and connectivity checks DONE'
         blocks = ifs.GetBlockSequence(expr_start, expr_new, expr_end)
         # Sanity checks ...
         assert len(blocks[expr_vdw]) == len(blocks[expr_start]) == len(blocks[expr_config]) == 1
         assert len(blocks[expr_molecule]) >= 1
+        assert len(blocks[expr_total]) == 1
         block_sys_spec = blocks[expr_start][0]
         block_config = blocks[expr_config][0]
         block_molecules = blocks[expr_molecule]
         block_vdw = blocks[expr_vdw][0]
         # Generate ...  
-        self.topology = DlPolyTopology(block_sys_spec, block_config, block_molecules, block_vdw, self)
-        
-        
-        self.SummarizeKeyDefaults()
-        self.topology.SummarizeKeyDefaults()
-        self.log.okquit()
-        
+        self.topology = DlPolyTopology(block_sys_spec, block_config, block_molecules, block_vdw, self)        
+        ifs.close()
         return
 
-        
+
+class DlPolyControls(DlPolyParser):
+    def __init__(self, log=None):
+        super(DlPolyControls, self).__init__(log)
+        self.logtag = 'ctr'
+        return
+    def ParseControls(self, ctrl_file):
+        if self.log: 
+            self.log << self.log.endl << self.log.mg << "Start controls ..." << self.log.endl        
+        ifs = FileStream(ctrl_file)
+        while not ifs.all_read():
+            ln = ifs.ln()
+            if ln[0:1] == '#': continue
+            sp = ln.split()
+            key = sp[0]
+            try:
+                key_long = KEY_RULES_CONTROLS_EXPAND_KEY[key]
+                self.Set(key_long, KEY_RULES_CONTROLS[key_long](sp))
+            except KeyError:
+                self.ignored_keys.append(key)
+                pass
+        ifs.close()
+        return
+
+
+class DlPolyConfig(DlPolyParser):
+    def __init__(self, log=None):
+        super(DlPolyConfig, self).__init__(log)
+        self.logtag = 'cfg'
+        self.atoms = []
+        return
+    def ParseConfig(self, trj_file):
+        if self.log:
+            self.log << self.log.mg << "Start configuration ..." << self.log.endl
+        ifs = FileStream(trj_file)
+        # Title
+        title = ifs.ln().replace('\n','').strip()
+        self.Set('title', title)
+        # Directives: logging, pbc
+        directives = ifs.ln().split()
+        self.Set('log_level', directives[0]) # 0 -> 1 -> 2: coords -> + vel. -> + forces
+        self.Set('pbc_type', directives[1])  # 0 / ... / 6: no / cubic / orthorhom. / par.-epiped / xy
+        self.Set('n_atoms', directives[2])
+        # Box
+        if self['pbc_type'].As(int) > 0:
+            a = map(float, ifs.ln().split())
+            b = map(float, ifs.ln().split())
+            c = map(float, ifs.ln().split())
+            self.Set('box_a', a)
+            self.Set('box_b', b)
+            self.Set('box_c', c)
+        # Atom records
+        n_atoms = self['n_atoms'].As(int)
+        log_level = self['log_level'].As(int)
+        for i in range(n_atoms):
+            atom_name, atom_id = tuple(ifs.ln().split())
+            xyz = map(float, ifs.ln().split())
+            records = [atom_name, atom_id, xyz]
+            record_labels = ['atom_name', 'atom_id', 'xyz']
+            if log_level > 0:
+                vel = map(float, ifs.ln().split())
+                records.append(vel)
+                record_labels.append('vel')
+                if log_level > 1:
+                    force = map(float, ifs.ln().split())
+                    records.append(force)
+                    record_labels.append('force')
+            new_atom = DlPolyAtom(records, record_labels, self)
+            self.atoms.append(new_atom)
+        assert len(self.atoms) == n_atoms
+        return
+
+# =======================
+# DLPOLY TOPOLOGY OBJECTS
+# =======================
+
 class DlPolyTopology(DlPolyParser):
     def __init__(self, block_sys_spec, block_config, block_mols, block_vdw, parser):
         super(DlPolyTopology, self).__init__(parser.log)
@@ -359,36 +481,33 @@ class DlPolyTopology(DlPolyParser):
         triple_str='\s*([0-9a-zA-Z_.]*)'*3+'\n'
         search_str = 'simulation cell vectors\s*\n' + 3*triple_str
         self.SearchMapKeys(search_str, config_str, ['box_ax', 'box_ay', 'box_az', 'box_bx', 'box_by', 'box_bz', 'box_cx', 'box_cy', 'box_cz'])
-        self.SearchMapKeys('system volume\s*([-+0-9.eEdD]*)\s*\n', config_str, ['box_volume'])
+        self.SearchMapKeys('system volume\s*([-+0-9.eEdD]*)\s*\n', config_str, ['box_volume'])        
         
-        self.molecules = []
         # Molecule specification
+        self.molecules = []
         for block_mol in block_mols:
             if self.log: self.log << self.log.mg << "Start molecule ..." << self.log.endl
-            new_mol = DlPolyMolecule(block_mol, self)
-            
+            new_mol = DlPolyMolecule(block_mol, self)            
         return
 
-
-KEY_TRANSFORM_MOL_GLOBAL = {
-'molecular_species_type' : 'molecule_type_id',
-'name_of_species' : 'molecule_type_name',
-'number_of_molecules' : 'n_instances_molecule_type'
-}
 
 class DlPolyMolecule(DlPolyParser):
     def __init__(self, mol_stream, parser):
         super(DlPolyMolecule, self).__init__(parser.log)
         self.logtag = 'mol'
+        self.atoms = []
         
         # PARTITION ONTO BLOCKS
         expr_global = 'molecular species type'
+        # Atoms ...
         expr_atoms = 'number of atoms/sites'
+        # Interactions ...
         expr_bonds = 'number of bonds'
         expr_bond_constraints = 'number of bond constraints'
         expr_angles = 'number of bond angles'
         expr_dihedrals = 'number of dihedral angles'
-        expr_inv_angles = 'number of inversion angles'        
+        expr_inv_angles = 'number of inversion angles'
+        # Block definitions ...
         expr_start = expr_global
         expr_new = [ expr_atoms, expr_bonds, expr_bond_constraints, expr_angles, expr_dihedrals, expr_inv_angles ]
         expr_end = None        
@@ -398,21 +517,57 @@ class DlPolyMolecule(DlPolyParser):
             assert len(blocks[key]) <= 1
         assert len(blocks[expr_atoms]) == 1
         
-        # PARSE GLOBAL
+        # PARSE GLOBALS
         block = blocks[expr_global][0]
         block_data = self.ReadBlockXy(block)
         self.ApplyBlockXyData(block_data, KEY_TRANSFORM_MOL_GLOBAL)
         
         # PARSE ATOMS
+        if self.log: self.log << self.log.mg << "Start atoms ..." << self.log.endl
         block = blocks[expr_atoms][0]
+        n_atoms = int(block.ln().split()[-1])
+        self.Set('n_atoms_in_molecule', n_atoms)
+        assert 'atomic characteristics' in block.ln()
+        # Determine atom properties        
+        atom_property_labels = block.ln().split()
+        assert atom_property_labels[0] == 'site'
+        atom_property_labels[0] = 'id'
+        atom_property_labels = [ 'atom_%s' % l.lower() for l in atom_property_labels ]
+        atom_count = 0
+        # Read atom lines & create atoms
         while not block.all_read():
-            print block.ln()
+            atom_properties = block.ln().split()
+            new_atom = DlPolyAtom(atom_properties, atom_property_labels, parser)
+            self.atoms.append(new_atom)
+            # Atom may repeat - make these repititions explicit
+            atom_id = new_atom['atom_id'].As(int)
+            atom_repeat = new_atom['atom_repeat'].As(int)
+            for i in range(atom_repeat-1):
+                next_id = atom_id+i+1
+                assert int(atom_properties[0]) == next_id-1
+                atom_properties[0] = atom_id+i+1
+                new_atom = DlPolyAtom(atom_properties, atom_property_labels, parser)
+                self.atoms.append(new_atom)
+            # Keep track of total count
+            atom_count += atom_repeat
+            assert atom_count <= n_atoms
+            if atom_count == n_atoms:
+                break
+        assert atom_count == n_atoms
         
+        # TODO Parse interactions
+        return
+
+
+class DlPolyAtom(DlPolyParser):
+    def __init__(self, atom_properties, atom_property_labels, parser):
+        super(DlPolyAtom, self).__init__(parser.log)
+        if not self.log.debug: self.log = None
+        self.logtag = 'atm'
+        for value, label in zip(atom_properties, atom_property_labels):
+            self.Set(label, value)
         return
         
         
         
-        
-        
-        
-        
+

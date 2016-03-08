@@ -45,8 +45,28 @@ def parse(output_file_name):
     o  = open_section
     p.startedParsingSession(output_file_name, parser_info)
     
+    # PARSE CONTROLS
+    ctrl_file_name = 'CONTROL'
+    terminal_ctrls = DlPolyControls(osio)
+    terminal_ctrls.ParseControls(ctrl_file_name)
+    
+    # PARSE OUTPUT / TOPOLOGY
+    output_file_name = 'OUTPUT'
     terminal = DlPolyParser(osio)
     terminal.ParseOutput(output_file_name)
+    
+    # PARSE TRAJECTORY
+    cfg_file_name = 'CONFIG'
+    terminal_trj = DlPolyConfig(osio)
+    terminal_trj.ParseConfig(cfg_file_name)    
+    
+    # SUMMARIZE KEY-TABLE DEFAULTS
+    terminal.SummarizeKeyDefaults()
+    terminal.topology.SummarizeKeyDefaults()
+    terminal_ctrls.SummarizeKeyDefaults()
+    terminal_trj.SummarizeKeyDefaults()
+    
+    osio.okquit()
 
     with o(p, 'section_run'):
         p.addValue('program_name', 'DL_POLY')
@@ -81,6 +101,7 @@ if __name__ == '__main__':
 
     log("Parsing ...", green)
     output_file_name = sys.argv[1]
-    parse(output_file_name)
+    parse(output_file_name)    
     log("... Done.", green)
+    
 
