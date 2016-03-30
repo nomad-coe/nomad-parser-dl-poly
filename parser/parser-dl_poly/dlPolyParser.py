@@ -54,15 +54,16 @@ def parse(output_file_name):
     jbe = JsonParseEventsWriterBackend(meta_info_env)
     jbe.startedParsingSession(output_file_name, parser_info)
     
+    base_dir = os.path.dirname(os.path.abspath(output_file_name))
     # PARSE CONTROLS ...
-    ctrl_file_name = 'CONTROL'
+    ctrl_file_name = os.path.join(base_dir, 'CONTROL')
     terminal_ctrls = DlPolyControls(osio)
     terminal_ctrls.ParseControls(ctrl_file_name)    
     # PARSE OUTPUT / TOPOLOGY ...
     terminal = DlPolyParser(osio)
     terminal.ParseOutput(output_file_name)    
     # PARSE TRAJECTORY ...
-    cfg_file_name = 'CONFIG'
+    cfg_file_name = os.path.join(base_dir, 'CONFIG')
     terminal_trj = DlPolyConfig(osio)
     terminal_trj.ParseConfig(cfg_file_name)
     # SUMMARIZE KEY-TABLE DEFAULTS ...
