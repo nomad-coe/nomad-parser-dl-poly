@@ -4,6 +4,7 @@ import re
 import json
 import logging
 import setup_paths
+import numpy as np
 
 from nomadcore.local_meta_info import loadJsonFile, InfoKindEl
 from nomadcore.parser_backend import JsonParseEventsWriterBackend
@@ -46,8 +47,18 @@ def push(jbe, terminal, key1, fct=lambda x: x.As(), key2=None):
     jbe.addValue(key1, value)
     return value
 
+def push_array(jbe, terminal, key1, key2=None):
+    if key2 == None: key2 = key1
+    value =  np.asarray(terminal[key2])
+    jbe.addValue(key1, value)
+    return value
+
 def push_value(jbe, value, key):
     jbe.addValue(key, value)
+    return value
+
+def push_array_values(jbe, value, key):
+    jbe.addArrayValues(key, value)
     return value
 
 def parse(output_file_name):
@@ -90,9 +101,8 @@ def parse(output_file_name):
     with open_section(jbe, 'section_run') as gid_run:
         push(jbe, out, 'program_name')
         push(jbe, out, 'program_version')
-        push(jbe, out, 'program_info', key2='program_version_date')
+        #push(jbe, out, 'program_info', key2='program_version_date')
         
-        """
         # TOPOLOGY SECTION
         with open_section(jbe, 'section_topology') as gid_top:
             # Cross-referencing is done on-the-fly (as gid's become available)
@@ -129,9 +139,10 @@ def parse(output_file_name):
                     molecule_type_name_to_type_gid[mol['molecule_type_name'].As()] = gid_mol
                     push(jbe, mol, 'molecule_type_name')
                     push(jbe, mol, 'number_of_atoms_in_molecule', lambda s: s.As(int))
-                    push(jbe, mol, 'atom_in_molecule_name')
-                    push(jbe, mol, 'atom_in_molecule_charge')
-                    push_value(jbe, atom_gid_list, 'atom_in_molecule_to_atom_type_ref')
+                    #push_array(jbe, mol, 'atom_in_molecule_name') #TODO
+                    push_array_values(jbe, np.asarray(mol['atom_in_molecule_name']), 'atom_in_molecule_name')
+                    #push_array(jbe, mol, 'atom_in_molecule_charge') # TODO
+                    push_array_values(jbe, np.asarray(atom_gid_list), 'atom_in_molecule_to_atom_type_ref') #TODO
             # Global molecule type map
             molecule_to_molecule_type = []
             for mol in top.molecules:
@@ -140,7 +151,8 @@ def parse(output_file_name):
                 n_this_mol = mol['number_of_molecules'].As(int)
                 for i in range(n_this_mol):
                     molecule_to_molecule_type.append(type_gid_this_mol)
-            push_value(jbe, molecule_to_molecule_type, 'molecule_to_molecule_type_map')
+            #push_value(jbe, molecule_to_molecule_type, 'molecule_to_molecule_type_map') #TODO
+
             # Global atom map
             atoms_to_molidx_atomidx = []
             molidx = 0
@@ -153,8 +165,8 @@ def parse(output_file_name):
                         atoms_to_molidx_atomidx.append(molidx_atomidx)
                         atomidx += 1
                     molidx += 1
-            push_value(jbe, atoms_to_molidx_atomidx, 'atom_to_molecule')
-               
+            #push_value(jbe, atoms_to_molidx_atomidx, 'atom_to_molecule') #TODO
+
         # SAMPLING-METHOD SECTION
         with open_section(jbe, 'section_sampling_method'):
             # Ensemble
@@ -176,7 +188,6 @@ def parse(output_file_name):
         # FRAME-SEQUENCE SECTION
         with open_section(jbe, 'section_frame_sequence'):
             pass
-        """
 
     jbe.finishedParsingSession("ParseSuccess", None)
     return

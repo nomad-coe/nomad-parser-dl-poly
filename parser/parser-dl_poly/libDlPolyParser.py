@@ -1,6 +1,7 @@
 import os
 import sys
 import re
+import numpy as np
 
 # TODO Distinguish: number_of_steps vs number_of_steps_equilibration
 # TODO Check units and install conversions
