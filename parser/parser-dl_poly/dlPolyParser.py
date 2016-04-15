@@ -2,7 +2,7 @@ import os
 import sys
 import re
 import json
-import logging
+#import logging
 import setup_paths
 import numpy as np
 
@@ -71,25 +71,32 @@ def parse(output_file_name):
     terminal_ctrls = DlPolyControls(osio)
     terminal_ctrls.ParseControls(ctrl_file_name)    
     # PARSE OUTPUT / TOPOLOGY ...
+    output_file_name = os.path.join(base_dir, 'OUTPUT')
     terminal = DlPolyParser(osio)
     terminal.ParseOutput(output_file_name)    
-    # PARSE TRAJECTORY ...
+    # PARSE CONFIG ...
     cfg_file_name = os.path.join(base_dir, 'CONFIG')
-    terminal_trj = DlPolyConfig(osio)
-    terminal_trj.ParseConfig(cfg_file_name)
+    terminal_cfg = DlPolyConfig(osio)
+    terminal_cfg.ParseConfig(cfg_file_name)
+    # PARSE TRAJECTORY
+    trj_file_name = os.path.join(base_dir, 'HISTORY')
+    terminal_trj = DlPolyTrajectory(osio)
+    terminal_trj.ParseTrajectory(trj_file_name)
     # SUMMARIZE KEY-TABLE DEFAULTS ...
     terminal.SummarizeKeyDefaults()
     terminal.topology.SummarizeKeyDefaults()
     terminal_ctrls.SummarizeKeyDefaults()
+    terminal_cfg.SummarizeKeyDefaults()
     terminal_trj.SummarizeKeyDefaults()
     # ABBREVIATE ...
     ctr = terminal_ctrls
     out = terminal
     top = terminal.topology
-    trj = terminal_trj
+    cfg = terminal_cfg
+    trj = terminal_trj    
     
     ofs = open('parser.keys.log', 'w')
-    terminals = [ctr, out, top, trj]
+    terminals = [ctr, out, top, cfg, trj]
     for t in terminals:
         keys = sorted(t.data.keys())
         for key in keys:
@@ -168,7 +175,9 @@ def parse(output_file_name):
             push_array_values(jbe, np.asarray(atoms_to_molidx_atomidx), 'atom_to_molecule')
 
         # SAMPLING-METHOD SECTION
-        with open_section(jbe, 'section_sampling_method'):
+        sec_sampling_method_ref = None
+        with open_section(jbe, 'section_sampling_method') as gid_sec_sampling_method:
+            sec_sampling_method_ref = gid_sec_sampling_method
             # Ensemble
             ensemble = push(jbe, out, 'ensemble_type', lambda s: s.As().split()[0].upper())           
             # Method
@@ -184,9 +193,55 @@ def parse(output_file_name):
                 push(jbe, out, 'barostat_target_pressure', lambda s: s.As(float))
                 push(jbe, out, 'barostat_tau', lambda s: s.As(float))
             pass
-
+            
+        # TODO Store state variables in frames/system description (temperature, pressure)
+        # TODO Store interactions
+        # TODO Add section_method (!= section_sampling_method)
+                
+        # SYSTEM DESCRIPTION
+        refs_system_description = []
+        all_frames = [cfg] + trj.frames # <- Initial config + trajectory
+        for frame in all_frames:
+            with open_section(jbe, 'section_system_description') as gid:
+                refs_system_description.append(gid)                
+                # Configuration core
+                atom_labels = np.array([ atom['atom_name'].As() for atom in frame.atoms ])
+                push_array_values(jbe, atom_labels, 'atom_label')
+                push_array_values(jbe, frame.position_matrix, 'atom_position')
+                push_array_values(jbe, frame.box_matrix, 'simulation_cell')
+                push_array_values(jbe, frame.pbc_booleans, 'configuration_periodic_dimensions')
+                if frame.has_velocities:
+                    push_array_values(jbe, frame.velocity_matrix, 'atom_velocities')
+                if frame.has_forces:
+                    # TODO Wouldn't it be nicer if forces were added here?
+                    pass
+                pass
+        
+        # SINGLE CONFIGURATIONS
+        refs_single_configuration = []
+        i_frame = -1
+        for frame in all_frames:
+            i_frame += 1
+            with open_section(jbe, 'section_single_configuration_calculation') as gid:
+                refs_single_configuration.append(gid)
+                # Reference system description section
+                ref_system = refs_system_description[i_frame]
+                push_value(jbe, ref_system, 'single_configuration_calculation_to_system_description_ref')
+                # Forces
+                if frame.has_forces:
+                    push_array_values(jbe, frame.force_matrix, 'atom_forces')
+                # TODO Set section_method reference
+                pass        
+        
         # FRAME-SEQUENCE SECTION
         with open_section(jbe, 'section_frame_sequence'):
+            push_value(jbe, len(all_frames), 'number_of_frames_in_sequence')
+            # Reference configurations and sampling method
+            push_value(jbe, sec_sampling_method_ref, 'frame_sequence_to_sampling_ref')
+            refs_config = np.array(refs_single_configuration)
+            push_array_values(jbe, refs_config, 'frame_sequence_local_frames')            
+            # TODO Push this to frame_sequence_time
+            time_values = [ frame['time_value'].As(float) for frame in trj.frames ]           
             pass
 
     jbe.finishedParsingSession("ParseSuccess", None)

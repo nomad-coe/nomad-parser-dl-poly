@@ -420,39 +420,26 @@ class DlPolyControls(DlPolyParser):
                 pass
         ifs.close()
         return
+        
 
-
-class DlPolyConfig(DlPolyParser):
+class DlPolyFrame(DlPolyParser):
     def __init__(self, log=None):
-        super(DlPolyConfig, self).__init__(log)
-        self.logtag = 'cfg'
+        super(DlPolyFrame, self).__init__(log)
         self.atoms = []
-        return
-    def ParseConfig(self, trj_file):
-        if self.log:
-            self.log << self.log.mg << "Start configuration ..." << self.log.endl
-        ifs = FileStream(trj_file)
-        # Title
-        title = ifs.ln().replace('\n','').strip()
-        self.Set('title', title)
-        # Directives: logging, pbc
-        directives = ifs.ln().split()
-        self.Set('log_level', directives[0]) # 0 -> 1 -> 2: coords -> + vel. -> + forces
-        self.Set('pbc_type', directives[1])  # 0 / ... / 6: no / cubic / orthorhom. / par.-epiped / xy
-        self.Set('n_atoms', directives[2])
-        # Box
-        if self['pbc_type'].As(int) > 0:
-            a = map(float, ifs.ln().split())
-            b = map(float, ifs.ln().split())
-            c = map(float, ifs.ln().split())
-            self.Set('box_a', a)
-            self.Set('box_b', b)
-            self.Set('box_c', c)
-        # Atom records
-        n_atoms = self['n_atoms'].As(int)
-        log_level = self['log_level'].As(int)
+        self.has_velocities = False
+        self.has_forces = False
+        self.position_matrix = None
+        self.pbc_booleans = None
+        self.box_matrix = np.zeros((3,3))
+    def ParseAtoms(self, ifs, n_atoms, log_level):
+        # Log level
+        if log_level > 0:
+            self.has_velocities = True
+            if log_level > 1:
+                self.has_forces = True
+        # Create atoms
         for i in range(n_atoms):
-            atom_name, atom_id = tuple(ifs.ln().split())
+            atom_name, atom_id = tuple(ifs.ln().split()[0:2]) # This leaves out weight, charge, rsd
             xyz = map(float, ifs.ln().split())
             records = [atom_name, atom_id, xyz]
             record_labels = ['atom_name', 'atom_id', 'xyz']
@@ -466,7 +453,124 @@ class DlPolyConfig(DlPolyParser):
                     record_labels.append('force')
             new_atom = DlPolyAtom(records, record_labels, self)
             self.atoms.append(new_atom)
-        assert len(self.atoms) == n_atoms
+        assert len(self.atoms) == n_atoms 
+        # Position matrix
+        self.position_matrix = np.zeros((n_atoms, 3))
+        for i in range(n_atoms):
+            self.position_matrix[i] = np.array(self.atoms[i]['xyz'].As())
+        # Velocity matrix
+        if self.has_velocities:
+            self.velocity_matrix = np.zeros((n_atoms, 3))
+            for i in range(n_atoms):
+                self.velocity_matrix[i] = np.array(self.atoms[i]['vel'].As())
+        if self.has_forces:
+            self.force_matrix = np.zeros((n_atoms, 3))
+            for i in range(n_atoms):
+                self.force_matrix[i] = np.array(self.atoms[i]['force'].As())
+        return
+    def ParseBox(self, ifs, pbc_type):
+        # PBC booleans
+        if pbc_type == 6:
+            self.pbc_booleans = np.array([ True, True, False ])
+        elif pbc_type > 0:
+            self.pbc_booleans = np.array([ True, True, True ])
+        else:
+            self.pbc_booleans = np.array([ False, False, False ])
+        # Box
+        if pbc_type > 0:
+            a = map(float, ifs.ln().split())
+            b = map(float, ifs.ln().split())
+            c = map(float, ifs.ln().split())
+            self.Set('box_a', a)
+            self.Set('box_b', b)
+            self.Set('box_c', c)
+            # Box matrix
+            # ATTENTION First index: x,y,z; second index: a,b,c
+            for i in range(3):
+                self.box_matrix[i][0] = a[i]
+                self.box_matrix[i][1] = b[i]
+                self.box_matrix[i][2] = c[i]  
+        return
+    def ParseFrame(self, ifs):
+        ln = ifs.ln()
+        directives = ln.split()
+        print directives
+        assert 'timestep' == directives[0]
+        # Frame meta-info
+        self.Set('timestep', directives[1])
+        self.Set('n_atoms', directives[2])
+        self.Set('log_level', directives[3])
+        self.Set('pbc_type', directives[4])
+        self.Set('dt', directives[5])
+        self.Set('time_value', self['timestep'].As(int)*self['dt'].As(float))
+        n_atoms = self['n_atoms'].As(int)
+        pbc_type = self['pbc_type'].As(int)
+        # Logging level
+        log_level = self['log_level'].As(int)
+        # Box
+        self.ParseBox(ifs, pbc_type)
+        # Atoms
+        self.ParseAtoms(ifs, n_atoms, log_level)
+        return
+        
+
+class DlPolyTrajectory(DlPolyParser):
+    def __init__(self, log=None):
+        super(DlPolyTrajectory, self).__init__(log)
+        self.logtag = 'trj'
+        self.frames = [] # List of DlPolyFrame's        
+    def ParseTrajectory(self, trj_file):
+        if self.log:
+            self.log << self.log.mg << "Start trajectory ..." << self.log.endl
+        if not os.path.isfile(trj_file):
+            trj_file = '__nofile__'
+            pass
+        else:
+            ifs = FileStream(trj_file)
+            title = ifs.ln().replace('\n','').strip()
+            # Title
+            self.Set('title', title)
+            # Directives: logging, pbc
+            directives = ifs.ln().split()
+            self.Set('log_level', directives[0])
+            self.Set('pbc_type', directives[1])
+            # Frames
+            while not ifs.all_read():
+                new_frame = DlPolyFrame(self.log)
+                new_frame.ParseFrame(ifs)
+                self.frames.append(new_frame)
+        if self.log:
+            self.log << "Read %d frames from %s" % (len(self.frames), trj_file) << self.log.endl
+        return
+
+
+class DlPolyConfig(DlPolyFrame):
+    def __init__(self, log=None):
+        DlPolyFrame.__init__(self, log)        
+        #super(DlPolyConfig, self).__init__(log)
+        self.logtag = 'cfg'
+        return
+    def ParseConfig(self, trj_file):
+        if self.log:
+            self.log << self.log.mg << "Start configuration ..." << self.log.endl
+        ifs = FileStream(trj_file)
+        # Title
+        title = ifs.ln().replace('\n','').strip()
+        self.Set('title', title)
+        self.Set('time_value', 0.)
+        # Directives: logging, pbc
+        directives = ifs.ln().split()
+        self.Set('log_level', directives[0]) # 0 -> 1 -> 2: coords -> + vel. -> + forces
+        self.Set('pbc_type', directives[1])  # 0 / ... / 6: no / cubic / orthorhom. / par.-epiped / xy
+        self.Set('n_atoms', directives[2])
+        n_atoms = self['n_atoms'].As(int)
+        pbc_type = self['pbc_type'].As(int)
+        # Logging level
+        log_level = self['log_level'].As(int)
+        # Box
+        self.ParseBox(ifs, pbc_type)
+        # Atom records
+        self.ParseAtoms(ifs, n_atoms, log_level)
         return
 
 # =======================
