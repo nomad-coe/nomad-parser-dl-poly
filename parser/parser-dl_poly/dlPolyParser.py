@@ -140,9 +140,9 @@ def parse(output_file_name):
                     push(jbe, mol, 'molecule_type_name')
                     push(jbe, mol, 'number_of_atoms_in_molecule', lambda s: s.As(int))
                     
-                    push_array(jbe, mol, 'atom_in_molecule_name') #TODO
-                    push_array(jbe, mol, 'atom_in_molecule_charge') # TODO
-                    push_array_values(jbe, np.asarray(atom_gid_list), 'atom_in_molecule_to_atom_type_ref') #TODO
+                    push_array(jbe, mol, 'atom_in_molecule_name')
+                    push_array(jbe, mol, 'atom_in_molecule_charge')
+                    push_array_values(jbe, np.asarray(atom_gid_list), 'atom_in_molecule_to_atom_type_ref')
             # Global molecule type map
             molecule_to_molecule_type = []
             for mol in top.molecules:
@@ -151,7 +151,7 @@ def parse(output_file_name):
                 n_this_mol = mol['number_of_molecules'].As(int)
                 for i in range(n_this_mol):
                     molecule_to_molecule_type.append(type_gid_this_mol)
-            push_array_values(jbe, np.asarray(molecule_to_molecule_type), 'molecule_to_molecule_type_map') #TODO
+            push_array_values(jbe, np.asarray(molecule_to_molecule_type), 'molecule_to_molecule_type_map')
 
             # Global atom map
             atoms_to_molidx_atomidx = []
@@ -165,7 +165,7 @@ def parse(output_file_name):
                         atoms_to_molidx_atomidx.append(molidx_atomidx)
                         atomidx += 1
                     molidx += 1
-            push_array_values(jbe, np.asarray(atoms_to_molidx_atomidx), 'atom_to_molecule') #TODO
+            push_array_values(jbe, np.asarray(atoms_to_molidx_atomidx), 'atom_to_molecule')
 
         # SAMPLING-METHOD SECTION
         with open_section(jbe, 'section_sampling_method'):
