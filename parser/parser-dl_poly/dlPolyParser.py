@@ -92,6 +92,7 @@ def parse(output_file_name):
         push(jbe, out, 'program_version')
         push(jbe, out, 'program_info', key2='program_version_date')
         
+        """
         # TOPOLOGY SECTION
         with open_section(jbe, 'section_topology') as gid_top:
             # Cross-referencing is done on-the-fly (as gid's become available)
@@ -153,7 +154,8 @@ def parse(output_file_name):
                         atomidx += 1
                     molidx += 1
             push_value(jbe, atoms_to_molidx_atomidx, 'atom_to_molecule')
-                        
+        """
+        """                
         # SAMPLING-METHOD SECTION
         with open_section(jbe, 'section_sampling_method'):
             # Ensemble
@@ -171,10 +173,12 @@ def parse(output_file_name):
                 push(jbe, out, 'barostat_target_pressure', lambda s: s.As(float))
                 push(jbe, out, 'barostat_tau', lambda s: s.As(float))
             pass
-        
+        """
+        """
         # FRAME-SEQUENCE SECTION
         with open_section(jbe, 'section_frame_sequence'):
             pass
+        """
 
     jbe.finishedParsingSession("ParseSuccess", None)
     return
