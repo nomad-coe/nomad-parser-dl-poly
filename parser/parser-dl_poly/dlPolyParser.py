@@ -47,10 +47,10 @@ def push(jbe, terminal, key1, fct=lambda x: x.As(), key2=None):
     jbe.addValue(key1, value)
     return value
 
-def push_array(jbe, terminal, key1, key2=None):
+def push_array(jbe, terminal, key1, fct=lambda x: x.As(), key2=None):
     if key2 == None: key2 = key1
-    value =  np.asarray(terminal[key2])
-    jbe.addValue(key1, value)
+    value =  np.asarray(fct(terminal[key2]))
+    jbe.addArrayValues(key1, value)
     return value
 
 def push_value(jbe, value, key):
@@ -139,9 +139,9 @@ def parse(output_file_name):
                     molecule_type_name_to_type_gid[mol['molecule_type_name'].As()] = gid_mol
                     push(jbe, mol, 'molecule_type_name')
                     push(jbe, mol, 'number_of_atoms_in_molecule', lambda s: s.As(int))
-                    #push_array(jbe, mol, 'atom_in_molecule_name') #TODO
-                    push_array_values(jbe, np.asarray(mol['atom_in_molecule_name']), 'atom_in_molecule_name')
-                    #push_array(jbe, mol, 'atom_in_molecule_charge') # TODO
+                    
+                    push_array(jbe, mol, 'atom_in_molecule_name') #TODO
+                    push_array(jbe, mol, 'atom_in_molecule_charge') # TODO
                     push_array_values(jbe, np.asarray(atom_gid_list), 'atom_in_molecule_to_atom_type_ref') #TODO
             # Global molecule type map
             molecule_to_molecule_type = []
@@ -151,7 +151,7 @@ def parse(output_file_name):
                 n_this_mol = mol['number_of_molecules'].As(int)
                 for i in range(n_this_mol):
                     molecule_to_molecule_type.append(type_gid_this_mol)
-            #push_value(jbe, molecule_to_molecule_type, 'molecule_to_molecule_type_map') #TODO
+            push_array_values(jbe, np.asarray(molecule_to_molecule_type), 'molecule_to_molecule_type_map') #TODO
 
             # Global atom map
             atoms_to_molidx_atomidx = []
@@ -165,7 +165,7 @@ def parse(output_file_name):
                         atoms_to_molidx_atomidx.append(molidx_atomidx)
                         atomidx += 1
                     molidx += 1
-            #push_value(jbe, atoms_to_molidx_atomidx, 'atom_to_molecule') #TODO
+            push_array_values(jbe, np.asarray(atoms_to_molidx_atomidx), 'atom_to_molecule') #TODO
 
         # SAMPLING-METHOD SECTION
         with open_section(jbe, 'section_sampling_method'):
