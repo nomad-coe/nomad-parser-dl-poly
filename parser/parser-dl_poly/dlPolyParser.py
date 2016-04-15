@@ -154,8 +154,7 @@ def parse(output_file_name):
                         atomidx += 1
                     molidx += 1
             push_value(jbe, atoms_to_molidx_atomidx, 'atom_to_molecule')
-        """
-        """                
+               
         # SAMPLING-METHOD SECTION
         with open_section(jbe, 'section_sampling_method'):
             # Ensemble
@@ -173,8 +172,7 @@ def parse(output_file_name):
                 push(jbe, out, 'barostat_target_pressure', lambda s: s.As(float))
                 push(jbe, out, 'barostat_tau', lambda s: s.As(float))
             pass
-        """
-        """
+
         # FRAME-SEQUENCE SECTION
         with open_section(jbe, 'section_frame_sequence'):
             pass
