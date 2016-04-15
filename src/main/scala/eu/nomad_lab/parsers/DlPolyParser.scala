@@ -27,6 +27,7 @@ object DlPolyParser extends SimpleExternalParserGenerator(
     "parser-dl_poly/libDlPolyParser.py",
     "parser-dl_poly/libMomo.py",
     "parser-dl_poly/setup_paths.py",
+    "nomad_meta_info/public.nomadmetainfo.json",
     "nomad_meta_info/common.nomadmetainfo.json",
     "nomad_meta_info/meta_types.nomadmetainfo.json",
     "nomad_meta_info/dl_poly.nomadmetainfo.json"
