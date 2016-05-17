@@ -206,8 +206,8 @@ def parse(output_file_name):
                 refs_system_description.append(gid)                
                 # Configuration core
                 atom_labels = np.array([ atom['atom_name'].As() for atom in frame.atoms ])
-                push_array_values(jbe, atom_labels, 'atom_label')
-                push_array_values(jbe, frame.position_matrix, 'atom_position')
+                push_array_values(jbe, atom_labels, 'atom_labels')
+                push_array_values(jbe, frame.position_matrix, 'atom_positions')
                 push_array_values(jbe, frame.box_matrix, 'simulation_cell')
                 push_array_values(jbe, frame.pbc_booleans, 'configuration_periodic_dimensions')
                 if frame.has_velocities:
