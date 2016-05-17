@@ -202,7 +202,7 @@ def parse(output_file_name):
         refs_system_description = []
         all_frames = [cfg] + trj.frames # <- Initial config + trajectory
         for frame in all_frames:
-            with open_section(jbe, 'section_system_description') as gid:
+            with open_section(jbe, 'section_system') as gid:
                 refs_system_description.append(gid)                
                 # Configuration core
                 atom_labels = np.array([ atom['atom_name'].As() for atom in frame.atoms ])

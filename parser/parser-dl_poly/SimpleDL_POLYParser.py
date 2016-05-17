@@ -18,8 +18,8 @@ class DL_POLYParserContext(object):
 	def onClose_section_method(self, backend, gIndex, section):
 		print "<onClose_section_method>"
 		return
-	def onClose_section_system_description(self, backend, gIndex, section):
-		print "<onClose_section_system_description>"
+	def onClose_section_system(self, backend, gIndex, section):
+		print "<onClose_section_system>"
 		return
 	def onClose_dl_poly_section_md_molecule_type(self, backend, gIndex, section):
 		print "<onClose_molecule_type>"
@@ -73,7 +73,7 @@ mainFileDescription = SM(name = 'root',
 				SM(name = 'mdSystem',
 					startReStr = r"\s*SYSTEM SPECIFICATION\s*",
 					required = True,
-					sections = ['section_system_description'],
+					sections = ['section_system'],
 					subMatchers = [
 						SM(name = 'mdTopology',
 							startReStr = r"\s*number of molecular types\s*[0-9]*\s*",
@@ -122,7 +122,7 @@ mainFileDescription = SM(name = 'root',
 
             SM(startReStr = "Number of k-points\s*",
                forwardMatch = True,
-               sections = ["section_system_description"],
+               sections = ["section_system"],
                subMatchers = [
 
                    SM(startReStr = "Number of k-points\s*",
@@ -168,7 +168,7 @@ mainFileDescription = SM(name = 'root',
                             
                       ]), # CLOSING section_single_configuration_calculation
                       
-            ]), # CLOSING section_system_description
+            ]), # CLOSING section_system
             
 ]), # CLOSING SM newRun
 
