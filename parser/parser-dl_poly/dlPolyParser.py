@@ -226,7 +226,7 @@ def parse(output_file_name):
                 refs_single_configuration.append(gid)
                 # Reference system description section
                 ref_system = refs_system_description[i_frame]
-                push_value(jbe, ref_system, 'single_configuration_calculation_to_system_description_ref')
+                push_value(jbe, ref_system, 'single_configuration_calculation_to_system_ref')
                 # Forces
                 if frame.has_forces:
                     push_array_values(jbe, frame.force_matrix, 'atom_forces')
@@ -239,7 +239,7 @@ def parse(output_file_name):
             # Reference configurations and sampling method
             push_value(jbe, sec_sampling_method_ref, 'frame_sequence_to_sampling_ref')
             refs_config = np.array(refs_single_configuration)
-            push_array_values(jbe, refs_config, 'frame_sequence_local_frames')            
+            push_array_values(jbe, refs_config, 'frame_sequence_local_frames_ref')
             # TODO Push this to frame_sequence_time
             time_values = [ frame['time_value'].As(float) for frame in trj.frames ]           
             pass
