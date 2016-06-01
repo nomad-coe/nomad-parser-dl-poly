@@ -182,16 +182,18 @@ def parse(output_file_name):
             ensemble = push(jbe, out, 'ensemble_type', lambda s: s.As().split()[0].upper())           
             # Method
             push(jbe, out, 'sampling_method')
-            push(jbe, out, 'integrator_type')
-            push(jbe, out, 'integrator_dt', lambda s: s.As(float))
-            push(jbe, out, 'number_of_steps_requested', lambda s: s.As(int))
+            push(jbe, out, 'x_dl_poly_integrator_type')
+            push(jbe, out, 'x_dl_poly_integrator_dt', lambda s: s.As(float))
+            push(jbe, out, 'x_dl_poly_number_of_steps_requested', lambda s: s.As(int))
             # Coupling
             if 'T' in ensemble:
-                push(jbe, out, 'thermostat_target_temperature', lambda s: s.As(float))
-                push(jbe, out, 'thermostat_tau', lambda s: s.As(float)) 
+                push(jbe, out, 'x_dl_poly_thermostat_target_temperature', lambda s: s.As(float))
+                push(jbe, out, 'x_dl_poly_thermostat_tau', lambda s: s.As(float))
+                pass
             if 'P' in ensemble:           
-                push(jbe, out, 'barostat_target_pressure', lambda s: s.As(float))
-                push(jbe, out, 'barostat_tau', lambda s: s.As(float))
+                push(jbe, out, 'x_dl_poly_barostat_target_pressure', lambda s: s.As(float))
+                push(jbe, out, 'x_dl_poly_barostat_tau', lambda s: s.As(float))
+                pass
             pass
             
         # TODO Store state variables in frames/system description (temperature, pressure)

@@ -15,13 +15,13 @@ import numpy as np
 # =================
 
 KEY_TRANSFORM_SIM_CTRL = {
-'simulation_temperature_k' : 'thermostat_target_temperature',
-'simulation_pressure_katms' : 'barostat_target_pressure',
-'integration' : 'integrator_type',
+'simulation_temperature_k' : 'x_dl_poly_thermostat_target_temperature',
+'simulation_pressure_katms' : 'x_dl_poly_barostat_target_pressure',
+'integration' : 'x_dl_poly_integrator_type',
 'ensemble' : 'ensemble_type',
-'thermostat_relaxation_time_ps' : 'thermostat_tau',
-'barostat_relaxation_time_ps' : 'barostat_tau',
-'selected_number_of_timesteps' : 'number_of_steps_requested',
+'thermostat_relaxation_time_ps' : 'x_dl_poly_thermostat_tau',
+'barostat_relaxation_time_ps' : 'x_dl_poly_barostat_tau',
+'selected_number_of_timesteps' : 'x_dl_poly_number_of_steps_requested',
 'equilibration_period_steps' : 'number_of_steps_equil_requested',
 'temperature_scaling_on_during' : None,
 'temperature_scaling_interval' : None,
@@ -37,7 +37,7 @@ KEY_TRANSFORM_SIM_CTRL = {
 'extended_coulombic_exclusion' : None,
 'cutoff_padding_reset_to_angs' : None,
 'vdw_cutoff_reset_to_angs' : None,
-'fixed_simulation_timestep_ps' : 'integrator_dt',
+'fixed_simulation_timestep_ps' : 'x_dl_poly_integrator_dt',
 'data_dumping_interval_steps' : None,
 'allocated_job_run_time_s' : None,
 'allocated_job_close_time_s' : None
