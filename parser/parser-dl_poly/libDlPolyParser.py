@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import sys
 import re
@@ -290,7 +291,7 @@ class DlPolyParser(object):
     def Set(self, key, value):
         if self.log:
             self.log << "Set [%s]   %-40s = %s" % (self.logtag, key, str(value)) << self.log.endl
-        if not self.data.has_key(key):
+        if key not in self.data:
             self.data[key] = value
         else:
             raise KeyError("Key already exists: '%s'" % key)
@@ -335,7 +336,7 @@ class DlPolyParser(object):
     def ApplyBlockXyData(self, block_data, key_map):
         for key_in in key_map:
             key_out = key_map[key_in]            
-            if not block_data.has_key(key_in):
+            if key_in not in block_data:
                 # Missing key in output
                 self.missing_keys_lh.append(key_in)
                 self.missing_keys_rh.append(key_out)
@@ -346,7 +347,7 @@ class DlPolyParser(object):
                 key_out = key_in
             self.Set(key_out, value)
         for key in block_data:
-            if not key_map.has_key(key):
+            if key not in key_map:
                 # Missing key in transform map
                 self.ignored_keys.append(key)
         return
@@ -494,7 +495,7 @@ class DlPolyFrame(DlPolyParser):
     def ParseFrame(self, ifs):
         ln = ifs.ln()
         directives = ln.split()
-        print directives
+        print(directives)
         assert 'timestep' == directives[0]
         # Frame meta-info
         self.Set('timestep', directives[1])

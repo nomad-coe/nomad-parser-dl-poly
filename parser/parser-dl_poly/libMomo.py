@@ -1,3 +1,4 @@
+from __future__ import print_function
 # See git https://github.com/capoe/momo.git
 import os
 import sys
@@ -59,7 +60,7 @@ def GenerateTreeDict(tree, element, path='', paths_rel_to=None):
 		child_elements, childtag_element = GenerateTreeDict(tree, child, path)
 		nodes = nodes + child_elements
 		for key in childtag_element.keys():
-			if tag_node.has_key(key):
+			if key in tag_node:
 				if type(tag_node[key]) != list:
 					tag_node[key] = [ tag_node[key], childtag_element[key] ]
 				else:
@@ -198,7 +199,7 @@ class OptionsInterface(object):
 		except KeyError:
 			raise ValueError('CLIO does not know how to convert %s into a boolean.' % expr)
 	def InterpretAsNumpyArray(self, expr):
-		print "Interpret", expr
+		print("Interpret", expr)
 		array = [ float(e) for e in expr ]
 		array = np.array(array)
 		return array
@@ -352,7 +353,7 @@ class ShellInterface(object):
 			mssg = self.color_dict[c] + mssg + self.color_dict['endcolor']
 		if h:
 			mssg = self.os_generate_header(mssg, t)
-		print mssg
+		print(mssg)
 	# LOGFILE ADAPTOR =========================================================
 	def ConnectToFile(self, logfile):
 		self.logfile = logfile
@@ -397,7 +398,7 @@ class ShellInterface(object):
 			mssg = OS_COLOR_DICT[c] + mssg + OS_COLOR_DICT['endcolor']
 		if h:
 			mssg = os_generate_header(mssg, t)
-		print mssg
+		print(mssg)
 		return
 	def os_print_config(self, c=None, j=None, h=False, t="=", tl=' '):
 		self.sel_color = c

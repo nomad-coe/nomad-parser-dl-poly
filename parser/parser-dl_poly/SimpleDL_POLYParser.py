@@ -1,3 +1,4 @@
+from __future__ import print_function
 import setup_paths
 import numpy as np
 import math
@@ -13,23 +14,23 @@ class DL_POLYParserContext(object):
 		self.cell	= []
 		return
 	def onClose_section_run(self, backend, gIndex, section):
-		print "<onClose_section_run>"
+		print("<onClose_section_run>")
 		return
 	def onClose_section_method(self, backend, gIndex, section):
-		print "<onClose_section_method>"
+		print("<onClose_section_method>")
 		return
 	def onClose_section_system(self, backend, gIndex, section):
-		print "<onClose_section_system>"
+		print("<onClose_section_system>")
 		return
 	def onClose_dl_poly_section_md_molecule_type(self, backend, gIndex, section):
-		print "<onClose_molecule_type>"
+		print("<onClose_molecule_type>")
 		return
 
 def test_adhoc(parser):
 	return None
 	for i in range(10):
 		ln = parser.fIn.readline()
-		print ln
+		print(ln)
 		parser.fIn.pushbackLine(ln)
 	#print len(parser.backend.openSections)
 	return None
