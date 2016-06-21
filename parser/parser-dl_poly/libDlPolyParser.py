@@ -454,7 +454,7 @@ class DlPolyFrame(DlPolyParser):
                 records.append(vel)
                 record_labels.append('vel')
                 if log_level > 1:
-                    force = [float x for x in ifs.ln().split()]
+                    force = [float(x) for x in ifs.ln().split()]
                     records.append(force)
                     record_labels.append('force')
             new_atom = DlPolyAtom(records, record_labels, self)
@@ -500,7 +500,7 @@ class DlPolyFrame(DlPolyParser):
     def ParseFrame(self, ifs):
         ln = ifs.ln()
         directives = ln.split()
-        print(directives)
+        #print(directives)
         assert 'timestep' == directives[0]
         # Frame meta-info
         self.Set('timestep', directives[1])
