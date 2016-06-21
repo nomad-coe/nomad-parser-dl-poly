@@ -1,8 +1,15 @@
 from __future__ import print_function
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from past.utils import old_div
+from builtins import object
 # See git https://github.com/capoe/momo.git
 import os
 import sys
-import commands
+import subprocess
 import argparse
 import time
 import numpy as np
@@ -106,7 +113,7 @@ class XmlTree(list):
 	def __getitem__(self, key):
 		return self.tag_node[key]
 	def keys(self):
-		return self.tag_node.keys()
+		return list(self.tag_node.keys())
 
 
 class XmlNode(object):
@@ -418,7 +425,7 @@ class ShellInterface(object):
 		try:
 		    height, width = os.popen('stty size', 'r').read().split()
 		    width = int(width)
-		    leftright = int((width - len(title)-2)/2)
+		    leftright = ((width - len(title)-2) // 2
 		except ValueError:
 		    leftright = 40
 		return trim*leftright + " " + title + " " + trim*leftright
@@ -443,7 +450,7 @@ class ShellInterface(object):
 		# Execute
 		if self.debug: self << self.my << "exe:" << cmmd << endl
 		if self.os_exe_get:
-			output = commands.getoutput(cmmd)
+			output = subprocess.getoutput(cmmd)
 			self.os_exe_get = False		
 			return output
 		else:

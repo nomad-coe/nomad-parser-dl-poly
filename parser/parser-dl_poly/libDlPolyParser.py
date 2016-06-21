@@ -1,4 +1,9 @@
 from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import map
+from builtins import range
+from builtins import object
 import os
 import sys
 import re
@@ -364,7 +369,7 @@ class DlPolyParser(object):
         self.SearchMapKeys('version:\s*(\d+.\d+)\s*/\s*(\w+\s*\d+)', ifs.ln(), ['program_version', 'program_version_date'])
         self.SearchMapKeys('execution on\s*(\d+)\s*node', ifs.ln(), ['n_nodes'])
         ln = ifs.SkipTo('node/domain decomposition')
-        self.Set('domain_decomposition', map(int, ln.split()[-3:]))
+        self.Set('domain_decomposition', list(map(int, ln.split()[-3:])))
         
         # SIMULATION TITLE
         ln = ifs.SkipToMatch('^\s+\*+$')
@@ -441,15 +446,15 @@ class DlPolyFrame(DlPolyParser):
         # Create atoms
         for i in range(n_atoms):
             atom_name, atom_id = tuple(ifs.ln().split()[0:2]) # This leaves out weight, charge, rsd
-            xyz = map(float, ifs.ln().split())
+            xyz = [float(x) for x in ifs.ln().split()]
             records = [atom_name, atom_id, xyz]
             record_labels = ['atom_name', 'atom_id', 'xyz']
             if log_level > 0:
-                vel = map(float, ifs.ln().split())
+                vel = [float(x) for x in ifs.ln().split()]
                 records.append(vel)
                 record_labels.append('vel')
                 if log_level > 1:
-                    force = map(float, ifs.ln().split())
+                    force = [float x for x in ifs.ln().split()]
                     records.append(force)
                     record_labels.append('force')
             new_atom = DlPolyAtom(records, record_labels, self)
@@ -479,9 +484,9 @@ class DlPolyFrame(DlPolyParser):
             self.pbc_booleans = np.array([ False, False, False ])
         # Box
         if pbc_type > 0:
-            a = map(float, ifs.ln().split())
-            b = map(float, ifs.ln().split())
-            c = map(float, ifs.ln().split())
+            a = [float(x) for x in ifs.ln().split()]
+            b = [float(x) for x in ifs.ln().split()]
+            c = [float(x) for x in ifs.ln().split()]
             self.Set('box_a', a)
             self.Set('box_b', b)
             self.Set('box_c', c)
