@@ -22,7 +22,7 @@ object DlPolyParser extends SimpleExternalParserGenerator(
   ),
   mainFileTypes = Seq("text/.*"),
   mainFileRe = """ DL_POLY """.r,
-  cmd = Seq(DefaultPythonInterpreter.python2Exe(), "${envDir}/parsers/dl_poly/parser/parser-dl_poly/dlPolyParser.py",
+  cmd = Seq(DefaultPythonInterpreter.pythonExe(), "${envDir}/parsers/dl_poly/parser/parser-dl_poly/dlPolyParser.py",
     "${mainFilePath}"),
   resList = Seq(
     "parser-dl_poly/dlPolyParser.py",
