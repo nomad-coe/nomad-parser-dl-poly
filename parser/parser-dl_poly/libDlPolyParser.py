@@ -264,6 +264,9 @@ class DlPolyParser(object):
         self.missing_keys_rh = []
         self.ignored_keys = [] # Raw keys that did not have a transform
         self.keys_not_found = [] # Searches that failed
+        # STORES TIME/STEP VARIABLES (ENERGY, ...)
+        self.step_data = {}
+        self.time_data = {}
         return
     def __getitem__(self, key):
         self.selected_data_item = self.data[key]
@@ -400,6 +403,47 @@ class DlPolyParser(object):
         block_vdw = blocks[expr_vdw][0]
         # Generate ...  
         self.topology = DlPolyTopology(block_sys_spec, block_config, block_molecules, block_vdw, self)        
+
+        # RUNTIME SYSTEM PROPS: ENERGIES, PRESSURE, ...
+        block = ifs.GetBlock('step     eng_tot', 'elapsed cpu time')
+        step_start_new = False
+        have_step = False
+        have_time = False
+        step_dict_list = {}
+        time_dict_list = {}
+        while not block.all_read():
+            ln = block.ln()
+            if '---------------' in ln:
+                step_start_new = True
+                continue
+            if 'step' in ln:
+                block.ln()
+                block.ln()
+                continue
+            sp = ln.split()
+            if sp == []: continue
+            if step_start_new:
+                # step eng_tot ...
+                step_dict = {}
+                step_nr = int(sp[0])
+                step_dict['eng_tot'] = float(sp[1])
+                step_dict_list[step_nr] = step_dict
+                step_start_new = False
+                # time ...
+                ln = block.ln()
+                sp = ln.split()
+                time = float(sp[0])
+                time_dict = {}
+                time_dict['eng_tot'] = step_dict['eng_tot']
+                time_dict_list[time] = time_dict
+            else:
+                pass
+        self.step_data = step_dict_list
+        self.time_data = time_dict_list
+        #for item in step_dict_list:
+        #    print("STEP", item, step_dict_list[item])
+        #for item in time_dict_list:
+        #    print("TIME", item, time_dict_list[item])
         ifs.close()
         return
 
@@ -434,6 +478,8 @@ class DlPolyFrame(DlPolyParser):
         self.atoms = []
         self.has_velocities = False
         self.has_forces = False
+        self.has_energy_total = False
+        self.energy_total = None
         self.position_matrix = None
         self.pbc_booleans = None
         self.box_matrix = np.zeros((3,3))
@@ -497,7 +543,7 @@ class DlPolyFrame(DlPolyParser):
                 self.box_matrix[i][1] = b[i]
                 self.box_matrix[i][2] = c[i]  
         return
-    def ParseFrame(self, ifs):
+    def ParseFrame(self, ifs, step_data, time_data):
         ln = ifs.ln()
         directives = ln.split()
         #print(directives)
@@ -511,6 +557,12 @@ class DlPolyFrame(DlPolyParser):
         self.Set('time_value', self['timestep'].As(int)*self['dt'].As(float))
         n_atoms = self['n_atoms'].As(int)
         pbc_type = self['pbc_type'].As(int)
+        # Look-up trajectory data
+        step = self['timestep'].As(int)
+        if step in step_data:
+            if 'eng_tot' in step_data[step]:
+                self.has_energy_total = True
+                self.energy_total = step_data[step]['eng_tot']
         # Logging level
         log_level = self['log_level'].As(int)
         # Box
@@ -525,7 +577,7 @@ class DlPolyTrajectory(DlPolyParser):
         super(DlPolyTrajectory, self).__init__(log)
         self.logtag = 'trj'
         self.frames = [] # List of DlPolyFrame's        
-    def ParseTrajectory(self, trj_file):
+    def ParseTrajectory(self, trj_file, step_data, time_data):
         if self.log:
             self.log << self.log.mg << "Start trajectory ..." << self.log.endl
         if not os.path.isfile(trj_file):
@@ -543,7 +595,7 @@ class DlPolyTrajectory(DlPolyParser):
             # Frames
             while not ifs.all_read():
                 new_frame = DlPolyFrame(self.log)
-                new_frame.ParseFrame(ifs)
+                new_frame.ParseFrame(ifs, step_data, time_data)
                 self.frames.append(new_frame)
         if self.log:
             self.log << "Read %d frames from %s" % (len(self.frames), trj_file) << self.log.endl

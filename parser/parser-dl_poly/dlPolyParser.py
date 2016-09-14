@@ -82,7 +82,7 @@ def parse(output_file_name):
     # PARSE TRAJECTORY
     trj_file_name = os.path.join(base_dir, 'HISTORY')
     terminal_trj = DlPolyTrajectory(osio)
-    terminal_trj.ParseTrajectory(trj_file_name)
+    terminal_trj.ParseTrajectory(trj_file_name, terminal.step_data, terminal.time_data)
     # SUMMARIZE KEY-TABLE DEFAULTS ...
     terminal.SummarizeKeyDefaults()
     terminal.topology.SummarizeKeyDefaults()
@@ -230,6 +230,9 @@ def parse(output_file_name):
                 # Reference system description section
                 ref_system = refs_system_description[i_frame]
                 push_value(jbe, ref_system, 'single_configuration_calculation_to_system_ref')
+                # Energy total
+                if frame.has_energy_total:
+                    push_value(jbe, frame.energy_total, 'energy_total')
                 # Forces
                 if frame.has_forces:
                     push_array_values(jbe, frame.force_matrix, 'atom_forces')
