@@ -42,24 +42,36 @@ def open_section(p, name):
     yield gid
     p.closeSection(name, gid)   
 
-def push(jbe, terminal, key1, fct=lambda x: x.As(), key2=None):
+def push(jbe, terminal, key1, fct=lambda x: x.As(), key2=None, conv=None):
     if key2 == None: key2 = key1
     value =  fct(terminal[key2])
-    jbe.addValue(key1, value)
+    if conv:
+        jbe.addValue(key1, value*conv)
+    else:
+        jbe.addValue(key1, value)
     return value
 
-def push_array(jbe, terminal, key1, fct=lambda x: x.As(), key2=None):
+def push_array(jbe, terminal, key1, fct=lambda x: x.As(), key2=None, conv=None):
     if key2 == None: key2 = key1
     value =  np.asarray(fct(terminal[key2]))
-    jbe.addArrayValues(key1, value)
+    if conv:
+        jbe.addArrayValues(key1, value*conv)
+    else:
+        jbe.addArrayValues(key1, value)
     return value
 
-def push_value(jbe, value, key):
-    jbe.addValue(key, value)
+def push_value(jbe, value, key, conv=None):
+    if conv:
+        jbe.addValue(key, value*conv)
+    else:
+        jbe.addValue(key, value)
     return value
 
-def push_array_values(jbe, value, key):
-    jbe.addArrayValues(key, value)
+def push_array_values(jbe, value, key, conv=None):
+    if conv: 
+        jbe.addArrayValues(key, value*conv)
+    else:
+        jbe.addArrayValues(key, value)
     return value
 
 def parse(output_file_name):
@@ -67,41 +79,54 @@ def parse(output_file_name):
     jbe.startedParsingSession(output_file_name, parser_info)
     
     base_dir = os.path.dirname(os.path.abspath(output_file_name))
+
     # PARSE CONTROLS ...
     ctrl_file_name = os.path.join(base_dir, 'CONTROL')
     terminal_ctrls = DlPolyControls(osio)
     terminal_ctrls.ParseControls(ctrl_file_name)    
+
     # PARSE OUTPUT / TOPOLOGY ...
     output_file_name = os.path.join(base_dir, 'OUTPUT')
     terminal = DlPolyParser(osio)
     terminal.ParseOutput(output_file_name)    
+
     # PARSE CONFIG ...
     cfg_file_name = os.path.join(base_dir, 'CONFIG')
     terminal_cfg = DlPolyConfig(osio)
     terminal_cfg.ParseConfig(cfg_file_name)
+
     # PARSE TRAJECTORY
     trj_file_name = os.path.join(base_dir, 'HISTORY')
     terminal_trj = DlPolyTrajectory(osio)
     terminal_trj.ParseTrajectory(trj_file_name, terminal.step_data, terminal.time_data)
+
     # SUMMARIZE KEY-TABLE DEFAULTS ...
     terminal.SummarizeKeyDefaults()
     terminal.topology.SummarizeKeyDefaults()
     terminal_ctrls.SummarizeKeyDefaults()
     terminal_cfg.SummarizeKeyDefaults()
     terminal_trj.SummarizeKeyDefaults()
+
     # ABBREVIATE ...
     ctr = terminal_ctrls
     out = terminal
     top = terminal.topology
     cfg = terminal_cfg
     trj = terminal_trj    
-    
-    ofs = open('parser.keys.log', 'w')
     terminals = [ctr, out, top, cfg, trj]
+
+    # ESTABLISH (ENERGY) UNITS
+    unit_energy = top['energy_units'].As(str).lower().replace(' ','').replace('/','_').replace('(','_').replace(')','')
+    UNITCONV_DLPOLY_TO_SI['energy'] = UNITCONV_DLPOLY_CUSTOM_TO_SI['energy_%s' % unit_energy]
+
+    ofs = open('parser.keys.log', 'w')
+    for quantity, conv in UNITCONV_DLPOLY_TO_SI.items():
+        ofs.write('Unit [%s] = %e SI\n' % (quantity, conv))
+    ofs.write('\n')
     for t in terminals:
         keys = sorted(t.data.keys())
         for key in keys:
-            ofs.write('[%s] %s\n' % (t.logtag, key))
+            ofs.write('[%s] %s = %s\n' % (t.logtag, key, t[key].As(str)))
         ofs.write('\n')
     ofs.close()
     
@@ -130,8 +155,8 @@ def parse(output_file_name):
                         atom_id = atom['atom_id'].As(int)
                         mol_type_atom_type_id_to_atom_type_gid[mol_name][atom_id] = gid_atom
                         push(jbe, atom, 'atom_type_name', lambda s: s.As(), 'atom_name')
-                        push(jbe, atom, 'atom_type_mass', lambda s: s.As(float), 'atom_mass')
-                        push(jbe, atom, 'atom_type_charge', lambda s: s.As(float), 'atom_charge')           
+                        push(jbe, atom, 'atom_type_mass', lambda s: s.As(float), 'atom_mass', conv=UNITCONV_DLPOLY_TO_SI['mass'])
+                        push(jbe, atom, 'atom_type_charge', lambda s: s.As(float), 'atom_charge', conv=UNITCONV_DLPOLY_TO_SI['charge'])           
             # Molecule types
             molecule_type_name_to_type_gid = {}
             for mol in top.molecules:
@@ -149,7 +174,7 @@ def parse(output_file_name):
                     push(jbe, mol, 'number_of_atoms_in_molecule', lambda s: s.As(int))
                     
                     push_array(jbe, mol, 'atom_in_molecule_name')
-                    push_array(jbe, mol, 'atom_in_molecule_charge')
+                    push_array(jbe, mol, 'atom_in_molecule_charge', conv=UNITCONV_DLPOLY_TO_SI['charge'])
                     push_array_values(jbe, np.asarray(atom_gid_list), 'atom_in_molecule_to_atom_type_ref')
             # Global molecule type map
             molecule_to_molecule_type = []
@@ -188,18 +213,23 @@ def parse(output_file_name):
             push(jbe, out, 'x_dl_poly_number_of_steps_requested', lambda s: s.As(int))
             # Coupling
             if 'T' in ensemble:
-                push(jbe, out, 'x_dl_poly_thermostat_target_temperature', lambda s: s.As(float))
+                push(jbe, out, 'x_dl_poly_thermostat_target_temperature', lambda s: s.As(float), conv=UNITCONV_DLPOLY_TO_SI['temperature'])
                 push(jbe, out, 'x_dl_poly_thermostat_tau', lambda s: s.As(float))
                 pass
             if 'P' in ensemble:           
-                push(jbe, out, 'x_dl_poly_barostat_target_pressure', lambda s: s.As(float))
-                push(jbe, out, 'x_dl_poly_barostat_tau', lambda s: s.As(float))
+                push(jbe, out, 'x_dl_poly_barostat_target_pressure', lambda s: s.As(float), conv=UNITCONV_DLPOLY_TO_SI['pressure_katm'])
+                push(jbe, out, 'x_dl_poly_barostat_tau', lambda s: s.As(float), conv=UNITCONV_DLPOLY_TO_SI['time'])
                 pass
             pass
+
+        # METHOD SECTION
+        sec_method_ref = None
+        with open_section(jbe, 'section_method') as gid_sec_method:
+            sec_method_ref = gid_sec_method
+            push_value(jbe, 'force_field', 'calculation_method')
             
         # TODO Store state variables in frames/system description (temperature, pressure)
         # TODO Store interactions
-        # TODO Add section_method (!= section_sampling_method)
                 
         # SYSTEM DESCRIPTION
         refs_system_description = []
@@ -210,13 +240,13 @@ def parse(output_file_name):
                 # Configuration core
                 atom_labels = np.array([ atom['atom_name'].As() for atom in frame.atoms ])
                 push_array_values(jbe, atom_labels, 'atom_labels')
-                push_array_values(jbe, frame.position_matrix, 'atom_positions')
-                push_array_values(jbe, frame.box_matrix, 'simulation_cell')
+                push_array_values(jbe, frame.position_matrix, 'atom_positions', conv=UNITCONV_DLPOLY_TO_SI['length'])
+                push_array_values(jbe, frame.box_matrix, 'simulation_cell', conv=UNITCONV_DLPOLY_TO_SI['length'])
                 push_array_values(jbe, frame.pbc_booleans, 'configuration_periodic_dimensions')
                 if frame.has_velocities:
-                    push_array_values(jbe, frame.velocity_matrix, 'atom_velocities')
+                    push_array_values(jbe, frame.velocity_matrix, 'atom_velocities', conv=UNITCONV_DLPOLY_TO_SI['length']/UNITCONV_DLPOLY_TO_SI['time'])
                 if frame.has_forces:
-                    # TODO Wouldn't it be nicer if forces were added here?
+                    # TODO Wouldn't it be simpler if forces were added here?
                     pass
                 pass
         
@@ -232,11 +262,12 @@ def parse(output_file_name):
                 push_value(jbe, ref_system, 'single_configuration_calculation_to_system_ref')
                 # Energy total
                 if frame.has_energy_total:
-                    push_value(jbe, frame.energy_total, 'energy_total')
+                    push_value(jbe, frame.energy_total, 'energy_total', conv=UNITCONV_DLPOLY_TO_SI['energy'])
                 # Forces
                 if frame.has_forces:
-                    push_array_values(jbe, frame.force_matrix, 'atom_forces')
-                # TODO Set section_method reference
+                    push_array_values(jbe, frame.force_matrix, 'atom_forces', conv=UNITCONV_DLPOLY_TO_SI['mass']*UNITCONV_DLPOLY_TO_SI['length']/UNITCONV_DLPOLY_TO_SI['time']**2)
+                # Method reference
+                push_value(jbe, sec_method_ref, 'single_configuration_to_calculation_method_ref')
                 pass        
         
         # FRAME-SEQUENCE SECTION
@@ -246,8 +277,8 @@ def parse(output_file_name):
             push_value(jbe, sec_sampling_method_ref, 'frame_sequence_to_sampling_ref')
             refs_config = np.array(refs_single_configuration)
             push_array_values(jbe, refs_config, 'frame_sequence_local_frames_ref')
-            # TODO Push this to frame_sequence_time
-            time_values = [ frame['time_value'].As(float) for frame in trj.frames ]           
+            time_values = np.array([ frame['time_value'].As(float)*UNITCONV_DLPOLY_TO_SI['time'] for frame in trj.frames ])
+            push_array_values(jbe, time_values, 'frame_sequence_time')
             pass
 
     jbe.finishedParsingSession("ParseSuccess", None)

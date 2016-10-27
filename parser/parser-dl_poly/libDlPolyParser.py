@@ -14,7 +14,27 @@ import numpy as np
 # TODO - Pressure
 # TODO Check sampling_method
 
+UNITCONV_DLPOLY_TO_SI = {
+'time' : 1e-12, # ps to s
+'length' : 1e-10, # AA to m
+'mass' : 1.6605402e-27, # u to kg
+'charge' : 1.6021733e-19, # e to C
+'energy' : 1.6605402e-23, # 10*J/mol to J
+'pressure' : 1.6605402e+7, # 163.88 atm to Pa
+'pressure_katm' : 1.01325000e+8, # katm to Pa
+'temperature' : 1. # K to K
+}
 
+UNITCONV_DLPOLY_CUSTOM_TO_SI = {
+'energy_kj_mol' : 1.6605402e-21, # kJ/mol to J
+'energy_kj'    : 1.6605402e-21, # kJ/mol to J
+'energy_ev' : 1.6021733e-19, # eV to J
+'energy_kcal_mol' : 4.184*1.6605402e-21, # kcal/mol to J
+'energy_kcal'    : 4.184*1.6605402e-21, # kcal/mol to J
+'energy_kelvin_boltzmann' : None,
+'energy_k'               : None,
+'energy_dl_polyinternalunits_10j_mol' : 1.6605402e-23 # 10*J/mol to J
+}
 
 # =================
 # TRANSLATION RULES
@@ -203,8 +223,8 @@ class FileStream(object):
         self.ifs.close()
     def nextline(self):
         while True:
-            ln = self.ifs.readline()
-            if ln.strip() != '':
+            ln = self.ifs.readline().replace('\n','').strip()
+            if ln != '':
                 return ln
             else: pass
             if self.all_read(): break
@@ -459,7 +479,7 @@ class DlPolyControls(DlPolyParser):
         ifs = FileStream(ctrl_file)
         while not ifs.all_read():
             ln = ifs.ln()
-            if ln[0:1] == '#': continue
+            if ln == '' or ln[0:1] == '#': continue
             sp = ln.split()
             key = sp[0]
             try:
