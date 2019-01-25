@@ -279,18 +279,19 @@ def parse(output_file_name):
                     push_value(jbe, frame.energy_total, 'energy_total', conv=UNITCONV_DLPOLY_TO_SI['energy'])
                 # Forces
                 if frame.has_forces:
-                    push_array_values(jbe, frame.force_matrix, 'atom_forces', conv=UNITCONV_DLPOLY_TO_SI['mass']*UNITCONV_DLPOLY_TO_SI['length']/UNITCONV_DLPOLY_TO_SI['time']**2)
+                    with open_section(jbe, 'section_atom_forces') as fid:
+                        push_array_values(jbe, frame.force_matrix, 'atom_forces', conv=UNITCONV_DLPOLY_TO_SI['mass']*UNITCONV_DLPOLY_TO_SI['length']/UNITCONV_DLPOLY_TO_SI['time']**2)
                 # Method reference
-                push_value(jbe, sec_method_ref, 'single_configuration_to_calculation_method_ref')
+                push_value(jbe, sec_method_ref, 'single_configuration_calculation_to_method_ref')
                 pass        
         
         # FRAME-SEQUENCE SECTION
         with open_section(jbe, 'section_frame_sequence'):
             push_value(jbe, len(all_frames), 'number_of_frames_in_sequence')
             # Reference configurations and sampling method
-            push_value(jbe, sec_sampling_method_ref, 'frame_sequence_to_sampling_ref')
+            push_value(jbe, sec_sampling_method_ref, 'frame_sequence_to_sampling_method_ref')
             refs_config = np.array(refs_single_configuration)
-            push_array_values(jbe, refs_config, 'frame_sequence_local_frames_ref')
+            push_array_values(jbe, refs_config, 'frame_sequence_to_frames_ref')
             time_values = np.array([ frame['time_value'].As(float)*UNITCONV_DLPOLY_TO_SI['time'] for frame in trj.frames ])
             push_array_values(jbe, time_values, 'frame_sequence_time')
             pass

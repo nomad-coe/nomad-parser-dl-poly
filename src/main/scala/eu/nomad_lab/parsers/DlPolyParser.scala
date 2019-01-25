@@ -38,7 +38,7 @@ object DlPolyParser extends SimpleExternalParserGenerator(
   ),
   mainFileTypes = Seq("text/.*"),
   mainFileRe = """ DL_POLY """.r,
-  cmd = Seq(DefaultPythonInterpreter.pythonExe(), "${envDir}/parsers/dl_poly/parser/parser-dl_poly/dlPolyParser.py",
+  cmd = Seq(DefaultPythonInterpreter.pythonExe(), "${envDir}/parsers/dl-poly/parser/parser-dl_poly/dlPolyParser.py",
     "${mainFilePath}"),
   resList = Seq(
     "parser-dl_poly/dlPolyParser.py",
@@ -47,11 +47,11 @@ object DlPolyParser extends SimpleExternalParserGenerator(
     "parser-dl_poly/setup_paths.py",
     "nomad_meta_info/public.nomadmetainfo.json",
     "nomad_meta_info/common.nomadmetainfo.json",
-    "nomad_meta_info/meta_types.nomadmetainfo.json",
+    "nomad_meta_info/meta.nomadmetainfo.json",
     "nomad_meta_info/dl_poly.nomadmetainfo.json"
   ) ++ DefaultPythonInterpreter.commonFiles(),
   dirMap = Map(
-    "parser-dl_poly" -> "parsers/dl_poly/parser/parser-dl_poly",
+    "parser-dl_poly" -> "parsers/dl-poly/parser/parser-dl_poly",
     "nomad_meta_info" -> "nomad-meta-info/meta_info/nomad_meta_info"
   ) ++ DefaultPythonInterpreter.commonDirMapping()
 )
