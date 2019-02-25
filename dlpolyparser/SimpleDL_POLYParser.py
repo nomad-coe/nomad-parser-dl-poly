@@ -1,11 +1,11 @@
 # Copyright 2016-2018 Carl Poelking, Fawzi Mohamed, Ankit Kariryaa
-# 
+#
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #   You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 #   Unless required by applicable law or agreed to in writing, software
 #   distributed under the License is distributed on an "AS IS" BASIS,
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,7 +15,6 @@
 from __future__ import print_function
 from builtins import range
 from builtins import object
-import setup_paths
 import numpy as np
 import math
 from nomadcore.simple_parser import mainFunction
@@ -38,7 +37,7 @@ class DL_POLYParserContext(object):
 	def onClose_section_system(self, backend, gIndex, section):
 		print("<onClose_section_system>")
 		return
-	def onClose_dl_poly_section_md_molecule_type(self, backend, gIndex, section):
+	def onClose_x_dl_poly_section_md_molecule_type(self, backend, gIndex, section):
 		print("<onClose_molecule_type>")
 		return
 
@@ -55,7 +54,7 @@ mainFileDescription = SM(name = 'root',
 	 weak = True,
 	 startReStr = "",
 	 subMatchers = [
-	 
+
 		SM(name = 'newRun',
 		    startReStr = r" \*\* DL_POLY \*\*  authors:   i.t.todorov   &   w.smith  \** P \**",
 		    repeats = False,
@@ -67,26 +66,26 @@ mainFileDescription = SM(name = 'root',
 				SM(name = 'progHeader',
 					startReStr = r" \*\* DL_POLY \*\*  authors:   i.t.todorov   &   w.smith  \** P \**",
 					subMatchers = [
-						SM(r"\s*\*\*\s*\*\*  version:  (?P<program_version>[0-9a-zA-Z_.]*)    / \s* (?P<dl_poly_program_version_date>[\w]*\s*[\w]*)\s*\** O \**"),
+						SM(r"\s*\*\*\s*\*\*  version:  (?P<program_version>[0-9a-zA-Z_.]*)    / \s* (?P<x_dl_poly_program_version_date>[\w]*\s*[\w]*)\s*\** O \**"),
 						SM(r"\s*\**  when publishing research data obtained using (?P<program_name>[0-9a-zA-Z_.]*)  \**"),
-						SM(r"\s*\**\s*(?P<dl_poly_system_description>[0-9a-zA-Z_()]*)\s*\**")
+						SM(r"\s*\**\s*(?P<x_dl_poly_system_description>[0-9a-zA-Z_()]*)\s*\**")
 					]),
 				SM(name = 'mdParams',
 					startReStr = r"\s*SIMULATION CONTROL PARAMETERS\s*",
 					required = True,
 					sections = ['section_method'],
 					subMatchers = [
-						SM(r"\s*simulation temperature \(K\)\s*(?P<dl_poly_thermostat_temperature>[-+0-9.eEdD]*)\s*"),
-						SM(r"\s*equilibration period \(steps\)\s*(?P<dl_poly_step_number_equilibration>[0-9]*)\s*"),
-						SM(r"\s*selected number of timesteps\s*(?P<dl_poly_step_number>[0-9]*)\s*")
+						SM(r"\s*simulation temperature \(K\)\s*(?P<x_dl_poly_thermostat_temperature>[-+0-9.eEdD]*)\s*"),
+						SM(r"\s*equilibration period \(steps\)\s*(?P<x_dl_poly_step_number_equilibration>[0-9]*)\s*"),
+						SM(r"\s*selected number of timesteps\s*(?P<x_dl_poly_step_number>[0-9]*)\s*")
 					]),
-					
+
 				# Open system
 				# ... open topology
 				# ... ... store <numberofmoleculetypes>
 				# ... ... open molecule type id1
 				# ... ... open molecule type ...
-					
+
 				SM(name = 'mdSystem',
 					startReStr = r"\s*SYSTEM SPECIFICATION\s*",
 					required = True,
@@ -96,18 +95,18 @@ mainFileDescription = SM(name = 'root',
 							startReStr = r"\s*number of molecular types\s*[0-9]*\s*",
 							required = True,
 							forwardMatch = True,
-							sections = ['dl_poly_section_md_topology'],
+							sections = ['x_dl_poly_section_md_topology'],
 							subMatchers = [
-								SM(r"\s*number of molecular types\s*(?P<dl_poly_md_molecular_types>[0-9]*)"),
+								SM(r"\s*number of molecular types\s*(?P<x_dl_poly_md_molecular_types>[0-9]*)"),
 								SM(name = 'mdTopologyMolecule',
 									startReStr = r"\s*molecular species type\s*[0-9]*\s*",
 									repeats = True,
 									required = True,
 									forwardMatch = True,
-									sections = ['dl_poly_section_md_molecule_type'],
+									sections = ['x_dl_poly_section_md_molecule_type'],
 									subMatchers = [
-										SM(r"\s*molecular species type\s*(?P<dl_poly_md_molecule_type_id>[0-9]*)\s*"),
-										SM(r"\s*name of species:\s*(?P<dl_poly_md_molecule_type_name>[\w]* [\w]*)\s*")
+										SM(r"\s*molecular species type\s*(?P<x_dl_poly_md_molecule_type_id>[0-9]*)\s*"),
+										SM(r"\s*name of species:\s*(?P<x_dl_poly_md_molecule_type_name>[\w]* [\w]*)\s*")
 									])
 							])
 						#SM(r"\s*number of molecular types\s*(?P<dl_poly_molecular_types_number>[0-9]*)\s*"),
@@ -118,7 +117,7 @@ mainFileDescription = SM(name = 'root',
 						#sections = ['dl_poly_section_molecule_types'],
 						#subMatchers = [\
 						#])
-					])                				
+					])
 			])
 	])
 
@@ -182,11 +181,11 @@ mainFileDescription = SM(name = 'root',
                                     ]), # CLOSING section_eigenvalues
 
                             ]), # CLOSING section_eigenvalues_group
-                            
+
                       ]), # CLOSING section_single_configuration_calculation
-                      
+
             ]), # CLOSING section_system
-            
+
 ]), # CLOSING SM newRun
 
 
@@ -196,22 +195,50 @@ mainFileDescription = SM(name = 'root',
 # THIS PARSER
 parserInfo = {'name':'dl_poly-parser', 'version': '0.0'}
 
-# LOAD METADATA
-metaInfoPath = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"../../../../nomad-meta-info/meta_info/nomad_meta_info/dl_poly.nomadmetainfo.json"))
-metaInfoEnv, warnings = loadJsonFile(filePath = metaInfoPath, dependencyLoader = None, extraArgsHandling = InfoKindEl.ADD_EXTRA_ARGS, uri = None)
+# # LOAD METADATA
+# metaInfoPath = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"../../../../nomad-meta-info/meta_info/nomad_meta_info/dl_poly.nomadmetainfo.json"))
+# metaInfoEnv, warnings = loadJsonFile(filePath = metaInfoPath, dependencyLoader = None, extraArgsHandling = InfoKindEl.ADD_EXTRA_ARGS, uri = None)
 
 # CUSTOMIZE CACHING
 cachingLevelForMetaName = {}
 
+import nomad_meta_info
+metaInfoPath = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(nomad_meta_info.__file__)), "dl_poly.nomadmetainfo.json"))
+metaInfoEnv, warnings = loadJsonFile(filePath = metaInfoPath, dependencyLoader = None, extraArgsHandling = InfoKindEl.ADD_EXTRA_ARGS, uri = None)
+
+class DlPolyParser():
+   """ A proper class envolop for running this parser from within python. """
+   def __init__(self, backend, **kwargs):
+       self.backend_factory = backend
+
+   def parse(self, mainfile):
+       from unittest.mock import patch
+       logging.info('dl-poly parser started')
+       logging.getLogger('nomadcore').setLevel(logging.WARNING)
+       backend = self.backend_factory(metaInfoEnv)
+       with patch.object(sys, 'argv', ['<exe>', '--uri', 'nmd://uri', mainfile]):
+           mainFunction(
+               mainFileDescription=mainFileDescription,
+               metaInfoEnv=metaInfoEnv,
+               parserInfo = parserInfo,
+               cachingLevelForMetaName = cachingLevelForMetaName,
+               superContext=DL_POLYParserContext(),
+               superBackend=backend,
+			   onClose = {},
+               defaultSectionCachingLevel = True)
+
+       return backend
+
+
 if __name__ == "__main__":
 
-	mainFunction(mainFileDescription, 
-    	metaInfoEnv, 
-    	parserInfo, 
-    	superContext = DL_POLYParserContext(), 
-    	cachingLevelForMetaName = cachingLevelForMetaName, 
+	mainFunction(mainFileDescription,
+    	metaInfoEnv,
+    	parserInfo,
+    	superContext = DL_POLYParserContext(),
+    	cachingLevelForMetaName = cachingLevelForMetaName,
     	onClose = {},
 		defaultSectionCachingLevel = False)
-		
-		
+
+
 

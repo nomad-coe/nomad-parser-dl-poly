@@ -1,11 +1,11 @@
 # Copyright 2016-2018 Carl Poelking, Fawzi Mohamed, Ankit Kariryaa
-# 
+#
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #   You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 #   Unless required by applicable law or agreed to in writing, software
 #   distributed under the License is distributed on an "AS IS" BASIS,
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,30 +17,29 @@ import os
 import sys
 import re
 import json
-#import logging
-import setup_paths
+import logging
 import numpy as np
 
 from nomadcore.local_meta_info import loadJsonFile, InfoKindEl
 from nomadcore.parser_backend import JsonParseEventsWriterBackend
 from contextlib import contextmanager
 
-from libDlPolyParser import *
+from dlpolyparser.libDlPolyParser import *
 
 try:
-    from libMomo import osio, endl, flush
+    from dlpolyparser.libMomo import osio, endl, flush
     osio.ConnectToFile('parser.osio.log')
     green = osio.mg
 except:
     osio = endl = flush = None
     green = None
-    
 
-parser_info = {
-    "name": "parser-dl-poly", 
-    "version": "0.0",
-    "json": "../../../../nomad-meta-info/meta_info/nomad_meta_info/dl_poly.nomadmetainfo.json"
-}
+
+# parser_info = {
+#     "name": "parser-dl-poly",
+#     "version": "0.0",
+#     "json": "../../../../nomad-meta-info/meta_info/nomad_meta_info/dl_poly.nomadmetainfo.json"
+# }
 
 # LOGGING
 def log(msg, highlight=None, enter=endl):
@@ -54,7 +53,7 @@ def log(msg, highlight=None, enter=endl):
 def open_section(p, name):
     gid = p.openSection(name)
     yield gid
-    p.closeSection(name, gid)   
+    p.closeSection(name, gid)
 
 def push(jbe, terminal, key1, fct=lambda x: x.As(), key2=None, conv=None):
     if key2 == None: key2 = key1
@@ -82,27 +81,64 @@ def push_value(jbe, value, key, conv=None):
     return value
 
 def push_array_values(jbe, value, key, conv=None):
-    if conv: 
+    if conv:
         jbe.addArrayValues(key, value*conv)
     else:
         jbe.addArrayValues(key, value)
     return value
 
-def parse(output_file_name):
-    jbe = JsonParseEventsWriterBackend(meta_info_env)
+
+# class DlPolyParser():
+#    """ A proper class envolop for running this parser from within python. """
+#    def __init__(self, backend, **kwargs):
+#        self.backend_factory = backend
+
+#     from unittest.mock import patch
+#     logging.info('dl-poly parser started')
+#     logging.getLogger('nomadcore').setLevel(logging.WARNING)
+#     backend = self.backend_factory(metaInfoEnv)
+#     # Rename parser
+#     def parse(self, mainfile):
+
+
+logger = logging.getLogger("nomad.DLPolyParser")
+
+
+class DlPolyParserWrapper():
+    """ A proper class envolop for running this parser using Noamd-FAIRD infra. """
+    def __init__(self, backend, **kwargs):
+        self.backend_factory = backend
+
+    def parse(self, mainfile):
+        import nomad_meta_info
+        metaInfoPath = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(nomad_meta_info.__file__)), "dl_poly.nomadmetainfo.json"))
+        metaInfoEnv, warnings = loadJsonFile(filePath = metaInfoPath, dependencyLoader = None, extraArgsHandling = InfoKindEl.ADD_EXTRA_ARGS, uri = None)
+        from unittest.mock import patch
+        logging.info('dl-poly parser started')
+        logging.getLogger('nomadcore').setLevel(logging.WARNING)
+        backend = self.backend_factory(metaInfoEnv)
+        # Call the old parser without a class.
+        parserInfo = {'name': 'dl_poly-parser', 'version': '0.0'}
+        backend = parse_without_class(mainfile, backend, parserInfo)
+        return backend
+
+
+def parse_without_class(output_file_name, backend, parser_info):
+    """ Parse method to parse mainfile and write output to backend."""
+    jbe = backend
     jbe.startedParsingSession(output_file_name, parser_info)
-    
+
     base_dir = os.path.dirname(os.path.abspath(output_file_name))
 
     # PARSE CONTROLS ...
     ctrl_file_name = os.path.join(base_dir, 'CONTROL')
     terminal_ctrls = DlPolyControls(osio)
-    terminal_ctrls.ParseControls(ctrl_file_name)    
+    terminal_ctrls.ParseControls(ctrl_file_name)
 
     # PARSE OUTPUT / TOPOLOGY ...
     output_file_name = os.path.join(base_dir, 'OUTPUT')
     terminal = DlPolyParser(osio)
-    terminal.ParseOutput(output_file_name)    
+    terminal.ParseOutput(output_file_name)
 
     # PARSE CONFIG ...
     cfg_file_name = os.path.join(base_dir, 'CONFIG')
@@ -126,7 +162,7 @@ def parse(output_file_name):
     out = terminal
     top = terminal.topology
     cfg = terminal_cfg
-    trj = terminal_trj    
+    trj = terminal_trj
     terminals = [ctr, out, top, cfg, trj]
 
     # ESTABLISH (ENERGY) UNITS
@@ -143,13 +179,13 @@ def parse(output_file_name):
             ofs.write('[%s] %s = %s\n' % (t.logtag, key, t[key].As(str)))
         ofs.write('\n')
     ofs.close()
-    
+
     # PUSH TO BACKEND
     with open_section(jbe, 'section_run') as gid_run:
         push(jbe, out, 'program_name')
         push(jbe, out, 'program_version')
         #push(jbe, out, 'program_info', key2='program_version_date')
-        
+
         # TOPOLOGY SECTION
         with open_section(jbe, 'section_topology') as gid_top:
             # Cross-referencing is done on-the-fly (as gid's become available)
@@ -157,7 +193,7 @@ def parse(output_file_name):
             # b) <atom_in_molecule_to_atom_type_ref> : shape=(number_of_atoms_in_molecule, [<gid>])
             # c) <atom_to_molecule> :                  shape=(number_of_topology_atoms, [<molidx>, <atomidx>])
             push(jbe, top, 'number_of_topology_molecules', lambda s: s.As(int))
-            push(jbe, top, 'number_of_topology_atoms', lambda s: s.As(int))            
+            push(jbe, top, 'number_of_topology_atoms', lambda s: s.As(int))
             # Atom types
             mol_type_atom_type_id_to_atom_type_gid = {}
             for mol in top.molecules:
@@ -170,7 +206,7 @@ def parse(output_file_name):
                         mol_type_atom_type_id_to_atom_type_gid[mol_name][atom_id] = gid_atom
                         push(jbe, atom, 'atom_type_name', lambda s: s.As(), 'atom_name')
                         push(jbe, atom, 'atom_type_mass', lambda s: s.As(float), 'atom_mass', conv=UNITCONV_DLPOLY_TO_SI['mass'])
-                        push(jbe, atom, 'atom_type_charge', lambda s: s.As(float), 'atom_charge', conv=UNITCONV_DLPOLY_TO_SI['charge'])           
+                        push(jbe, atom, 'atom_type_charge', lambda s: s.As(float), 'atom_charge', conv=UNITCONV_DLPOLY_TO_SI['charge'])
             # Molecule types
             molecule_type_name_to_type_gid = {}
             for mol in top.molecules:
@@ -181,12 +217,12 @@ def parse(output_file_name):
                 for atom in mol.atoms:
                     atom_id = atom['atom_id'].As(int)
                     atom_gid_list.append(atom_type_id_to_atom_type_gid[atom_id])
-                # Add molecule                    
+                # Add molecule
                 with open_section(jbe, 'section_molecule_type') as gid_mol:
                     molecule_type_name_to_type_gid[mol['molecule_type_name'].As()] = gid_mol
                     push(jbe, mol, 'molecule_type_name')
                     push(jbe, mol, 'number_of_atoms_in_molecule', lambda s: s.As(int))
-                    
+
                     push_array(jbe, mol, 'atom_in_molecule_name')
                     push_array(jbe, mol, 'atom_in_molecule_charge', conv=UNITCONV_DLPOLY_TO_SI['charge'])
                     push_array_values(jbe, np.asarray(atom_gid_list), 'atom_in_molecule_to_atom_type_ref')
@@ -219,7 +255,7 @@ def parse(output_file_name):
         with open_section(jbe, 'section_sampling_method') as gid_sec_sampling_method:
             sec_sampling_method_ref = gid_sec_sampling_method
             # Ensemble
-            ensemble = push(jbe, out, 'ensemble_type', lambda s: s.As().split()[0].upper())           
+            ensemble = push(jbe, out, 'ensemble_type', lambda s: s.As().split()[0].upper())
             # Method
             push(jbe, out, 'sampling_method')
             push(jbe, out, 'x_dl_poly_integrator_type')
@@ -230,7 +266,7 @@ def parse(output_file_name):
                 push(jbe, out, 'x_dl_poly_thermostat_target_temperature', lambda s: s.As(float), conv=UNITCONV_DLPOLY_TO_SI['temperature'])
                 push(jbe, out, 'x_dl_poly_thermostat_tau', lambda s: s.As(float))
                 pass
-            if 'P' in ensemble:           
+            if 'P' in ensemble:
                 push(jbe, out, 'x_dl_poly_barostat_target_pressure', lambda s: s.As(float), conv=UNITCONV_DLPOLY_TO_SI['pressure_katm'])
                 push(jbe, out, 'x_dl_poly_barostat_tau', lambda s: s.As(float), conv=UNITCONV_DLPOLY_TO_SI['time'])
                 pass
@@ -241,19 +277,21 @@ def parse(output_file_name):
         with open_section(jbe, 'section_method') as gid_sec_method:
             sec_method_ref = gid_sec_method
             push_value(jbe, 'force_field', 'calculation_method')
-            
+
         # TODO Store state variables in frames/system description (temperature, pressure)
         # TODO Store interactions
-                
+
         # SYSTEM DESCRIPTION
         refs_system_description = []
         all_frames = [cfg] + trj.frames # <- Initial config + trajectory
         for frame in all_frames:
             with open_section(jbe, 'section_system') as gid:
-                refs_system_description.append(gid)                
+                refs_system_description.append(gid)
                 # Configuration core
-                atom_labels = np.array([ atom['atom_name'].As() for atom in frame.atoms ])
+                atom_labels = np.array(
+                    [ atom['atom_name'].As().replace('+','').replace('-','') for atom in frame.atoms ])
                 push_array_values(jbe, atom_labels, 'atom_labels')
+                # push_array_values(jbe, atom_species, 'atom_atom_numbers')
                 push_array_values(jbe, frame.position_matrix, 'atom_positions', conv=UNITCONV_DLPOLY_TO_SI['length'])
                 push_array_values(jbe, frame.box_matrix, 'simulation_cell', conv=UNITCONV_DLPOLY_TO_SI['length'])
                 push_array_values(jbe, frame.pbc_booleans, 'configuration_periodic_dimensions')
@@ -263,7 +301,7 @@ def parse(output_file_name):
                     # TODO Wouldn't it be simpler if forces were added here?
                     pass
                 pass
-        
+
         # SINGLE CONFIGURATIONS
         refs_single_configuration = []
         i_frame = -1
@@ -282,8 +320,8 @@ def parse(output_file_name):
                     push_array_values(jbe, frame.force_matrix, 'atom_forces', conv=UNITCONV_DLPOLY_TO_SI['mass']*UNITCONV_DLPOLY_TO_SI['length']/UNITCONV_DLPOLY_TO_SI['time']**2)
                 # Method reference
                 push_value(jbe, sec_method_ref, 'single_configuration_to_calculation_method_ref')
-                pass        
-        
+                pass
+
         # FRAME-SEQUENCE SECTION
         with open_section(jbe, 'section_frame_sequence'):
             push_value(jbe, len(all_frames), 'number_of_frames_in_sequence')
@@ -296,7 +334,7 @@ def parse(output_file_name):
             pass
 
     jbe.finishedParsingSession("ParseSuccess", None)
-    return
+    return jbe
 
 if __name__ == '__main__':
 
@@ -316,5 +354,5 @@ if __name__ == '__main__':
 
     output_file_name = sys.argv[1]
     parse(output_file_name)
-    
+
 
