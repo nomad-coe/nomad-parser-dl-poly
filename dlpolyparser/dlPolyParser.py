@@ -169,16 +169,16 @@ def parse_without_class(output_file_name, backend, parser_info):
     unit_energy = top['energy_units'].As(str).lower().replace(' ','').replace('/','_').replace('(','_').replace(')','')
     UNITCONV_DLPOLY_TO_SI['energy'] = UNITCONV_DLPOLY_CUSTOM_TO_SI['energy_%s' % unit_energy]
 
-    ofs = open('parser.keys.log', 'w')
-    for quantity, conv in UNITCONV_DLPOLY_TO_SI.items():
-        ofs.write('Unit [%s] = %e SI\n' % (quantity, conv))
-    ofs.write('\n')
-    for t in terminals:
-        keys = sorted(t.data.keys())
-        for key in keys:
-            ofs.write('[%s] %s = %s\n' % (t.logtag, key, t[key].As(str)))
-        ofs.write('\n')
-    ofs.close()
+    # ofs = open('parser.keys.log', 'w')
+    # for quantity, conv in UNITCONV_DLPOLY_TO_SI.items():
+    #     ofs.write('Unit [%s] = %e SI\n' % (quantity, conv))
+    # ofs.write('\n')
+    # for t in terminals:
+    #     keys = sorted(t.data.keys())
+    #     for key in keys:
+    #         ofs.write('[%s] %s = %s\n' % (t.logtag, key, t[key].As(str)))
+    #     ofs.write('\n')
+    # ofs.close()
 
     # PUSH TO BACKEND
     with open_section(jbe, 'section_run') as gid_run:
