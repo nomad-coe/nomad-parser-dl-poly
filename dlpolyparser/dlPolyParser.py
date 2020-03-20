@@ -21,7 +21,6 @@ import logging
 import numpy as np
 
 from nomadcore.local_meta_info import loadJsonFile, InfoKindEl
-from nomadcore.parser_backend import JsonParseEventsWriterBackend
 from contextlib import contextmanager
 
 from dlpolyparser.libDlPolyParser import *
@@ -110,13 +109,9 @@ class DlPolyParserWrapper():
         self.backend_factory = backend
 
     def parse(self, mainfile):
-        import nomad_meta_info
-        metaInfoPath = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(nomad_meta_info.__file__)), "dl_poly.nomadmetainfo.json"))
-        metaInfoEnv, warnings = loadJsonFile(filePath = metaInfoPath, dependencyLoader = None, extraArgsHandling = InfoKindEl.ADD_EXTRA_ARGS, uri = None)
-        from unittest.mock import patch
         logging.info('dl-poly parser started')
         logging.getLogger('nomadcore').setLevel(logging.WARNING)
-        backend = self.backend_factory(metaInfoEnv)
+        backend = self.backend_factory("dl_poly.nomadmetainfo.json")
         # Call the old parser without a class.
         parserInfo = {'name': 'dl_poly-parser', 'version': '0.0'}
         backend = parse_without_class(mainfile, backend, parserInfo)
