@@ -27,8 +27,10 @@ from dlpolyparser.libDlPolyParser import *
 
 try:
     from dlpolyparser.libMomo import osio, endl, flush
-    osio.ConnectToFile('parser.osio.log')
-    green = osio.mg
+    # osio.ConnectToFile('parser.osio.log')
+    # green = osio.mg
+    osio = endl = flush = None
+    green = None
 except:
     osio = endl = flush = None
     green = None
