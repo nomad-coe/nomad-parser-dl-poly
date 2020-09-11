@@ -1,7 +1,0 @@
-code-label: DL_POLY
-code-label-style: all capitals and underscore, not dash (minus)
-code-url: https://www.scd.stfc.ac.uk/Pages/DL_POLY.aspx
-parser-dir-name: dependencies/parsers/dl-poly/
-parser-git-url: https://gitlab.mpcdf.mpg.de/nomad-lab/parser-dl-poly
-parser-specific: ''
-table-of-files: ''
