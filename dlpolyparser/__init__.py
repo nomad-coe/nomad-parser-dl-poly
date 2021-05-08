@@ -17,4 +17,4 @@
 # limitations under the License.
 #
 
-from dlpolyparser.dlPolyParser import DlPolyParserWrapper
+from .dlpoly_parser import DLPolyParser
