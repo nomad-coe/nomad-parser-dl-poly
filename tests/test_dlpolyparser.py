@@ -37,16 +37,16 @@ def test_basic(parser):
 
     parser.parse('tests/data/dl-poly-test1/OUTPUT', archive, None)
 
-    sec_run = archive.section_run[0]
-    assert sec_run.program_version == '4.07    /    january  2015'
+    sec_run = archive.run[0]
+    assert sec_run.program.version == '4.07    /    january  2015'
 
-    sec_system = archive.section_run[0].section_system[0]
-    assert sec_system.lattice_vectors[2][2].magnitude == approx(9.878128e-09)
-    assert sec_system.atom_labels[10] == 'Na'
-    assert np.shape(sec_system.atom_positions) == (27000, 3)
-    assert sec_system.atom_positions[3][1].magnitude == approx(-1.98512856e-09)
-    assert np.shape(sec_system.atom_velocities) == (27000, 3)
+    sec_system = archive.run[0].system[0]
+    assert sec_system.atoms.lattice_vectors[2][2].magnitude == approx(9.878128e-09)
+    assert sec_system.atoms.labels[10] == 'Na'
+    assert np.shape(sec_system.atoms.positions) == (27000, 3)
+    assert sec_system.atoms.positions[3][1].magnitude == approx(-1.98512856e-09)
+    assert np.shape(sec_system.atoms.velocities) == (27000, 3)
 
-    sec_sccs = sec_run.section_single_configuration_calculation
-    assert sec_sccs[3].energy_total.magnitude == approx(-1.5993482e-14)
-    assert sec_sccs[0].atom_forces[50][2].magnitude == approx(-2.85217134e-10)
+    sec_sccs = sec_run.calculation
+    assert sec_sccs[3].energy.total.value.magnitude == approx(-1.5993482e-14)
+    assert sec_sccs[0].forces.total.value[50][2].magnitude == approx(-2.85217134e-10)
