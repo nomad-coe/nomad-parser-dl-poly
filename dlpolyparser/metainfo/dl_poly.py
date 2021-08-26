@@ -26,6 +26,9 @@ from nomad.datamodel.metainfo import run
 from nomad.datamodel.metainfo import workflow
 
 
+m_package = Package()
+
+
 class x_dl_poly_section_md_molecule_type(MSection):
     '''
     Section to store molecule type information

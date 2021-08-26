@@ -16,4 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import dlpolyparser.metainfo.dl_poly
+from nomad.metainfo import Environment
+
+from . import dl_poly
+
+m_env = Environment()
+m_env.m_add_sub_section(Environment.packages, dl_poly.m_package)
